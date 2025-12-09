@@ -210,13 +210,6 @@ export default function CustomersPage() {
     return parts.join(", ");
   };
 
-  const mapsUrl =
-    selectedCustomer && buildAddress(selectedCustomer)
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          buildAddress(selectedCustomer),
-        )}`
-      : undefined;
-
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -514,7 +507,7 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
 
-        {/* Dialog de detalhes do cliente */}
+        {/* Dialog de detalhes do cliente com mini mapa */}
         <Dialog
           open={!!selectedCustomer}
           onOpenChange={(open) => !open && setSelectedCustomer(null)}
@@ -586,21 +579,19 @@ export default function CustomersPage() {
                   <p className="text-sm text-muted-foreground whitespace-pre-line">
                     {buildAddress(selectedCustomer) || "-"}
                   </p>
-                  {mapsUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-1"
-                      asChild
-                    >
-                      <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Ver no mapa
-                      </a>
-                    </Button>
+
+                  {buildAddress(selectedCustomer) && (
+                    <div className="mt-2 overflow-hidden rounded-md border">
+                      <iframe
+                        title="Mapa do cliente"
+                        src={`https://www.google.com/maps?q=${encodeURIComponent(
+                          buildAddress(selectedCustomer),
+                        )}&output=embed`}
+                        loading="lazy"
+                        className="h-56 w-full"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
                   )}
                 </div>
               </div>
