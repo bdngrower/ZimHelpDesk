@@ -1,44 +1,90 @@
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  Ticket, 
-  Users, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Ticket,
+  Users,
+  Settings,
+  LogOut,
   Bell,
   Search,
   Menu,
   Languages,
-  BarChart3
+  BarChart3,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import logo from "@assets/generated_images/modern_abstract_logo_for_a_help_desk_software.png";
 import { useLanguage } from "@/context/language-context";
+import { useAuth } from "@/context/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { t, language, setLanguage } = useLanguage();
+  const { user } = useAuth();
 
-  const NavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => {
-    const isActive = location === href || location.startsWith(href + '/');
+  // Carrega profile do usuário logado
+  const { data: profile } = useQuery({
+    queryKey: ["current_profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .eq("id", user!.id)
+        .single();
+
+      if (error) throw error;
+      return data as {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+      };
+    },
+  });
+
+  const displayName =
+    profile?.full_name ||
+    (user?.user_metadata as any)?.full_name ||
+    (user?.email ? user.email.split("@")[0] : "User");
+
+  const displayEmail = profile?.email || user?.email || "";
+  const avatarUrl =
+    profile?.avatar_url ||
+    (user?.user_metadata as any)?.avatar_url ||
+    "https://i.pravatar.cc/150?u=default";
+
+  const NavItem = ({
+    href,
+    icon: Icon,
+    label,
+  }: {
+    href: string;
+    icon: any;
+    label: string;
+  }) => {
+    const isActive = location === href || location.startsWith(href + "/");
     return (
       <Link href={href}>
         <Button
           variant={isActive ? "secondary" : "ghost"}
-          className={`w-full justify-start gap-3 ${isActive ? 'font-semibold text-primary' : 'text-muted-foreground'}`}
+          className={`w-full justify-start gap-3 ${
+            isActive ? "font-semibold text-primary" : "text-muted-foreground"
+          }`}
         >
           <Icon className="h-4 w-4" />
           {label}
@@ -47,32 +93,64 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   const SidebarContent = () => (
     <div className="flex h-full flex-col gap-4">
       <div className="flex h-16 items-center border-b px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-display font-bold text-xl tracking-tight">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 font-display font-bold text-xl tracking-tight"
+        >
           <img src={logo} alt="Logo" className="h-8 w-8 rounded-md" />
-          <span>HelpDesk<span className="text-primary">Pro</span></span>
+          <span>
+            HelpDesk<span className="text-primary">Pro</span>
+          </span>
         </Link>
       </div>
       <div className="flex-1 px-4 py-2">
         <nav className="flex flex-col gap-1">
-          <NavItem href="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} />
-          <NavItem href="/tickets" icon={Ticket} label={t('nav.tickets')} />
-          <NavItem href="/reports" icon={BarChart3} label={t('nav.reports')} />
-          <NavItem href="/customers" icon={Users} label={t('nav.customers')} />
-          <NavItem href="/settings" icon={Settings} label={t('nav.settings')} />
+          <NavItem
+            href="/dashboard"
+            icon={LayoutDashboard}
+            label={t("nav.dashboard")}
+          />
+          <NavItem href="/tickets" icon={Ticket} label={t("nav.tickets")} />
+          <NavItem
+            href="/reports"
+            icon={BarChart3}
+            label={t("nav.reports")}
+          />
+          <NavItem
+            href="/customers"
+            icon={Users}
+            label={t("nav.customers")}
+          />
+          <NavItem
+            href="/settings"
+            icon={Settings}
+            label={t("nav.settings")}
+          />
         </nav>
       </div>
       <div className="border-t p-4">
         <div className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
           <Avatar className="h-9 w-9 border">
-            <AvatarImage src="https://i.pravatar.cc/150?u=bob" />
-            <AvatarFallback>BS</AvatarFallback>
+            <AvatarImage src={avatarUrl} />
+            <AvatarFallback>
+              {displayName?.charAt(0).toUpperCase() || "U"}
+            </AvatarFallback>
           </Avatar>
           <div className="flex flex-col overflow-hidden">
-            <span className="truncate text-sm font-medium">Bob Smith</span>
-            <span className="truncate text-xs text-muted-foreground">bob@company.com</span>
+            <span className="truncate text-sm font-medium">
+              {displayName}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              {displayEmail}
+            </span>
           </div>
         </div>
       </div>
@@ -105,58 +183,100 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder={t('search.placeholder')}
+                placeholder={t("search.placeholder")}
                 className="w-full bg-muted/50 pl-9 shadow-none focus-visible:bg-background"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Idiomas */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" size="icon" className="text-muted-foreground">
-                   <Languages className="h-5 w-5" />
-                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
+                  <Languages className="h-5 w-5" />
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLanguage('en')} className={language === 'en' ? 'bg-accent' : ''}>
+                <DropdownMenuItem
+                  onClick={() => setLanguage("en")}
+                  className={language === "en" ? "bg-accent" : ""}
+                >
                   English
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('pt-br')} className={language === 'pt-br' ? 'bg-accent' : ''}>
+                <DropdownMenuItem
+                  onClick={() => setLanguage("pt-br")}
+                  className={language === "pt-br" ? "bg-accent" : ""}
+                >
                   Português (BR)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
-              <Bell className="h-5 w-5" />
-            </Button>
+            {/* Notificações (dropdown simples) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
+                  <Bell className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="px-3 py-2 text-xs text-muted-foreground">
+                  Nenhuma notificação no momento.
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Avatar / Conta */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full"
+                >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://i.pravatar.cc/150?u=bob" />
-                    <AvatarFallback>BS</AvatarFallback>
+                    <AvatarImage src={avatarUrl} />
+                    <AvatarFallback>
+                      {displayName?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{t('nav.account')}</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {t("nav.account")}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>{t('nav.profile')}</DropdownMenuItem>
-                <DropdownMenuItem>{t('nav.settings')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  {t("nav.profile")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  {t("nav.settings")}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={handleLogout}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
-                  {t('nav.logout')}
+                  {t("nav.logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
   );
