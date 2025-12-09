@@ -1,18 +1,17 @@
 import Layout from "@/components/layout";
-import { MOCK_USERS } from "@/lib/mock-data";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Search, Mail, Phone, MoreHorizontal } from "lucide-react";
+import { Search, Mail, MoreHorizontal, Plus, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import {
   DropdownMenu,
@@ -20,24 +19,196 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useState, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+
+type Customer = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  avatar_url: string | null;
+};
 
 export default function CustomersPage() {
   const { t } = useLanguage();
-  const customers = MOCK_USERS.filter(u => u.role === 'customer');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [search, setSearch] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Carrega clientes reais do Supabase (profiles.role = 'customer')
+  const {
+    data: customers = [],
+    isLoading,
+    error,
+  } = useQuery<Customer[]>({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role, avatar_url")
+        .eq("role", "customer")
+        .order("full_name", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []) as Customer[];
+    },
+  });
+
+  // Filtro de busca
+  const filteredCustomers = useMemo(() => {
+    if (!search.trim()) return customers;
+    const s = search.toLowerCase();
+    return customers.filter((c) => {
+      const name = c.full_name?.toLowerCase() ?? "";
+      const email = c.email?.toLowerCase() ?? "";
+      return name.includes(s) || email.includes(s);
+    });
+  }, [customers, search]);
+
+  // Mutação para criar novo cliente
+  const createCustomerMutation = useMutation({
+    mutationFn: async (payload: { full_name: string; email: string }) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .insert({
+          full_name: payload.full_name,
+          email: payload.email,
+          role: "customer",
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setNewName("");
+      setNewEmail("");
+      setFormError(null);
+      setIsDialogOpen(false);
+      toast({
+        title: "Cliente criado",
+        description: "O cliente foi adicionado com sucesso.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao criar cliente",
+        description: err?.message ?? "Não foi possível criar o cliente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  function handleSubmitNewCustomer(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!newName.trim() || !newEmail.trim()) {
+      setFormError("Informe nome e e-mail.");
+      return;
+    }
+
+    createCustomerMutation.mutate({
+      full_name: newName.trim(),
+      email: newEmail.trim(),
+    });
+  }
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">{t('customers.title')}</h1>
-            <p className="text-muted-foreground">{t('customers.subtitle')}</p>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
+              {t("customers.title")}
+            </h1>
+            <p className="text-muted-foreground">
+              {t("customers.subtitle")}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Customer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[400px]">
+                <DialogHeader>
+                  <DialogTitle>Add Customer</DialogTitle>
+                  <DialogDescription>
+                    Crie um novo cliente no sistema. Isso cria apenas o
+                    registro em <code>profiles</code> com role{" "}
+                    <code>customer</code>.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  onSubmit={handleSubmitNewCustomer}
+                  className="space-y-4 pt-2"
+                >
+                  <div className="grid gap-2">
+                    <Label htmlFor="customer-name">Name</Label>
+                    <Input
+                      id="customer-name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Nome do cliente"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="customer-email">Email</Label>
+                    <Input
+                      id="customer-email"
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="cliente@empresa.com"
+                      required
+                    />
+                  </div>
+
+                  {formError && (
+                    <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      disabled={createCustomerMutation.isLoading}
+                    >
+                      {createCustomerMutation.isLoading
+                        ? "Salvando..."
+                        : "Salvar"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -49,6 +220,8 @@ export default function CustomersPage() {
                 <Input
                   placeholder="Search customers..."
                   className="w-full bg-background pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
@@ -65,70 +238,106 @@ export default function CustomersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.map((user) => (
-                  <TableRow key={user.id} className="group hover:bg-muted/30">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 border">
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-foreground">{user.name}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="h-3.5 w-3.5" />
-                        {user.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="capitalize">{user.role}</span>
-                    </TableCell>
-                    <TableCell>Oct 24, 2023</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>View Tickets</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">Block User</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {isLoading && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-6 text-center text-sm text-muted-foreground"
+                    >
+                      Loading customers...
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
+
+                {error && !isLoading && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-6 text-center text-sm text-red-500"
+                    >
+                      Failed to load customers.
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!isLoading &&
+                  !error &&
+                  filteredCustomers.map((user) => (
+                    <TableRow
+                      key={user.id}
+                      className="group hover:bg-muted/30"
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9 border">
+                            <AvatarImage
+                              src={user.avatar_url || ""}
+                            />
+                            <AvatarFallback>
+                              {user.full_name
+                                ? user.full_name.charAt(0)
+                                : "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {user.full_name || "Unnamed"}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="h-3.5 w-3.5" />
+                          {user.email || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="capitalize">
+                          {user.role || "customer"}
+                        </span>
+                      </TableCell>
+                      <TableCell>—</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              View Tickets
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                              Block User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                {!isLoading &&
+                  !error &&
+                  filteredCustomers.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="py-6 text-center text-sm text-muted-foreground"
+                      >
+                        No customers found.
+                      </TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
     </Layout>
-  );
-}
-
-function PlusIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
   );
 }
