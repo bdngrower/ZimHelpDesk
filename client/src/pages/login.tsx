@@ -51,7 +51,7 @@ export default function LoginPage() {
             <img src={logo} alt="Logo" className="h-12 w-12 rounded-lg shadow-sm" />
           </div>
           <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
-            Welcome back
+            Seja Bem-Vindo
           </h1>
           <p className="mt-2 text-muted-foreground">
             Enter your credentials to access the agent portal
@@ -60,9 +60,9 @@ export default function LoginPage() {
 
         <Card className="border-muted/60 shadow-lg">
           <CardHeader>
-            <CardTitle>Sign in</CardTitle>
+            <CardTitle>Entrar</CardTitle>
             <CardDescription>
-              Use your company email to continue
+              Use o seu e-mail corporativo para continuar
             </CardDescription>
           </CardHeader>
 
@@ -82,9 +82,9 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Senha</Label>
                   <Link href="#" className="text-xs text-primary hover:underline">
-                    Forgot password?
+                    Esqueceu sua Senha?
                   </Link>
                 </div>
                 <Input
@@ -120,7 +120,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
+          Ainda não tem uma conta?{" "}
           <Link href="#" className="font-medium text-primary hover:underline">
             Contact your administrator
           </Link>
