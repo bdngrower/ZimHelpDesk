@@ -190,9 +190,10 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    setLocation("/login");
-  };
+  await signOut();
+  // volta sempre para a raiz do domínio atual
+  window.location.href = window.location.origin;
+};
 
   const goToProfile = () => {
     setLocation("/settings#profile");
