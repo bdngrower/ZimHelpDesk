@@ -192,8 +192,9 @@ export default function AllTicketsPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               {t("all_tickets.title")}
             </h1>
@@ -203,24 +204,31 @@ export default function AllTicketsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button
+              variant="outline"
+              className="gap-2 rounded-full border-dashed transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
             </Button>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("dashboard.new_ticket")}
+                <Button
+                  className="gap-2 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>{t("dashboard.new_ticket")}</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>{t("dashboard.new_ticket")}</DialogTitle>
+                  <DialogTitle className="text-xl font-semibold">
+                    {t("dashboard.new_ticket")}
+                  </DialogTitle>
                   <DialogDescription>
                     Crie um novo chamado. Ele será salvo no Supabase com
-                    status &quot;open&quot;.
+                    status <span className="font-semibold">&quot;open&quot;</span>.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -235,6 +243,7 @@ export default function AllTicketsPage() {
                       onChange={(e) => setSubject(e.target.value)}
                       placeholder="Ex.: Não consigo acessar o sistema"
                       required
+                      className="rounded-lg"
                     />
                   </div>
 
@@ -249,7 +258,7 @@ export default function AllTicketsPage() {
                         value={requesterId}
                         onValueChange={(value) => setRequesterId(value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-lg">
                           <SelectValue placeholder="Selecione o cliente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -278,7 +287,7 @@ export default function AllTicketsPage() {
                           setPriority(value as TicketPriority)
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-lg">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -298,6 +307,7 @@ export default function AllTicketsPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Descreva o problema..."
                       rows={4}
+                      className="rounded-lg"
                     />
                   </div>
 
@@ -312,11 +322,12 @@ export default function AllTicketsPage() {
                     <Button
                       type="submit"
                       disabled={createTicketMutation.isLoading}
+                      className="gap-2 rounded-full px-6 transition-transform duration-150 hover:scale-[1.02]"
                     >
                       {createTicketMutation.isLoading ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Criando...
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Criando...</span>
                         </>
                       ) : (
                         "Criar Chamado"
@@ -329,17 +340,22 @@ export default function AllTicketsPage() {
           </div>
         </div>
 
-        <Card className="shadow-sm">
+        {/* Lista de tickets */}
+        <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
           <CardHeader className="border-b bg-muted/40 px-6 py-4">
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex flex-1 items-center gap-2">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t("search.placeholder")}
-                  className="w-full bg-background pl-9"
+                  className="w-full rounded-full bg-background/80 pl-9 text-sm shadow-none transition-colors focus-visible:bg-background"
                 />
               </div>
-              <Button variant="outline" size="icon">
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-dashed transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5"
+              >
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </div>
@@ -348,18 +364,26 @@ export default function AllTicketsPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[100px]">
+                <TableRow className="bg-muted/50 hover:bg-muted/60">
+                  <TableHead className="w-[100px] text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.id")}
                   </TableHead>
-                  <TableHead className="min-w-[300px]">
+                  <TableHead className="min-w-[300px] text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.subject")}
                   </TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
-                  <TableHead>{t("table.priority")}</TableHead>
-                  <TableHead>{t("table.requester")}</TableHead>
-                  <TableHead>{t("table.assignee")}</TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.status")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.priority")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.requester")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.assignee")}
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.created")}
                   </TableHead>
                 </TableRow>
@@ -370,7 +394,7 @@ export default function AllTicketsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="text-center py-10 text-muted-foreground"
+                      className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Loading tickets...
                     </TableCell>
@@ -381,7 +405,7 @@ export default function AllTicketsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="text-center py-10 text-red-500"
+                      className="py-10 text-center text-sm text-red-500"
                     >
                       Failed to load tickets.
                     </TableCell>
@@ -396,12 +420,12 @@ export default function AllTicketsPage() {
                   return (
                     <TableRow
                       key={ticket.id}
-                      className="group cursor-pointer hover:bg-muted/30"
+                      className="group cursor-pointer border-b last:border-b-0 transition-colors hover:bg-muted/30"
                     >
                       <TableCell className="font-medium">
                         <Link
                           href={`/ticket/${ticket.id}`}
-                          className="block w-full text-primary hover:underline"
+                          className="block w-full text-sm font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
                         >
                           {displayId}
                         </Link>
@@ -412,10 +436,10 @@ export default function AllTicketsPage() {
                           href={`/ticket/${ticket.id}`}
                           className="block w-full"
                         >
-                          <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                          <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
                             {ticket.subject}
                           </div>
-                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                          <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                             {ticket.description}
                           </div>
                         </Link>
@@ -424,7 +448,7 @@ export default function AllTicketsPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`border font-normal capitalize shadow-sm ${
+                          className={`border font-normal capitalize shadow-sm transition-colors ${
                             STATUS_COLORS[
                               ticket.status as keyof typeof STATUS_COLORS
                             ]
@@ -435,7 +459,7 @@ export default function AllTicketsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-sm">
                           <div
                             className={`h-2 w-2 rounded-full ${
                               PRIORITY_COLORS[
@@ -443,7 +467,7 @@ export default function AllTicketsPage() {
                               ].replace("text-", "bg-")
                             }`}
                           />
-                          <span className="capitalize text-sm">
+                          <span className="capitalize">
                             {t(`priority.${ticket.priority}`)}
                           </span>
                         </div>
@@ -451,7 +475,7 @@ export default function AllTicketsPage() {
 
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
+                          <Avatar className="h-6 w-6 border">
                             <AvatarImage
                               src={ticket.requester?.avatar_url || ""}
                             />
@@ -469,7 +493,7 @@ export default function AllTicketsPage() {
                       <TableCell>
                         {ticket.assignee ? (
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
+                            <Avatar className="h-6 w-6 border">
                               <AvatarImage
                                 src={ticket.assignee?.avatar_url || ""}
                               />
@@ -483,13 +507,13 @@ export default function AllTicketsPage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic">
+                          <span className="text-xs italic text-muted-foreground">
                             Unassigned
                           </span>
                         )}
                       </TableCell>
 
-                      <TableCell className="text-right text-muted-foreground text-sm">
+                      <TableCell className="text-right text-sm text-muted-foreground">
                         {formatDistanceToNow(
                           new Date(ticket.created_at),
                           {
@@ -501,16 +525,19 @@ export default function AllTicketsPage() {
                   );
                 })}
 
-                {tickets && tickets.length === 0 && !isLoading && !error && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center py-10 text-muted-foreground"
-                    >
-                      No tickets found.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {tickets &&
+                  tickets.length === 0 &&
+                  !isLoading &&
+                  !error && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-10 text-center text-sm text-muted-foreground"
+                      >
+                        No tickets found.
+                      </TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
             </Table>
           </CardContent>
