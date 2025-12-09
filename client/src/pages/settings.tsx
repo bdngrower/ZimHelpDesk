@@ -30,8 +30,9 @@ import {
   AlertCircle,
   UserPlus,
   MoreHorizontal,
+  AlertTriangle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/language-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,8 +50,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/auth-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type TeamMember = {
   id: string;
@@ -63,12 +81,96 @@ type TeamMember = {
 export default function SettingsPage() {
   const { toast } = useToast();
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
 
-  // Team members reais do Supabase (agents + admins)
+  // ---- PERFIL (aba Profile) ----
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    error: profileError,
+  } = useQuery({
+    queryKey: ["settings_profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .eq("id", user!.id)
+        .single();
+
+      if (error) throw error;
+      return data as {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+      };
+    },
+  });
+
+  const [fullName, setFullName] = useState("");
+  const [avatarUrlInput, setAvatarUrlInput] = useState("");
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name ?? "");
+      setAvatarUrlInput(profile.avatar_url ?? "");
+    }
+  }, [profile]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (payload: { full_name: string; avatar_url: string }) => {
+      if (!user?.id) throw new Error("Usuário não autenticado.");
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: payload.full_name,
+          avatar_url: payload.avatar_url || null,
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings_profile"] });
+      queryClient.invalidateQueries({ queryKey: ["current_profile"] });
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram salvas com sucesso.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: err?.message ?? "Não foi possível salvar o perfil.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Informe um nome para o seu perfil.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateProfileMutation.mutate({
+      full_name: fullName.trim(),
+      avatar_url: avatarUrlInput.trim(),
+    });
+  };
+
+  // ---- TEAM MEMBERS (aba Equipe) ----
   const {
     data: teamMembers = [],
     isLoading: isLoadingTeam,
@@ -86,11 +188,178 @@ export default function SettingsPage() {
     },
   });
 
+  // Estado para Add Agent
+  const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
+  const [agentName, setAgentName] = useState("");
+  const [agentEmail, setAgentEmail] = useState("");
+  const [agentRole, setAgentRole] = useState<"agent" | "admin">("agent");
+
+  const addAgentMutation = useMutation({
+    mutationFn: async (payload: {
+      full_name: string;
+      email: string;
+      role: "agent" | "admin";
+    }) => {
+      const { error } = await supabase.from("profiles").insert({
+        full_name: payload.full_name,
+        email: payload.email,
+        role: payload.role,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      setAgentName("");
+      setAgentEmail("");
+      setAgentRole("agent");
+      setIsAddAgentOpen(false);
+      toast({
+        title: "Agente criado",
+        description:
+          "O agente foi adicionado à equipe. Crie o usuário de login no Supabase se necessário.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao criar agente",
+        description: err?.message ?? "Não foi possível criar o agente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddAgent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agentName.trim() || !agentEmail.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Informe nome e e-mail do agente.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addAgentMutation.mutate({
+      full_name: agentName.trim(),
+      email: agentEmail.trim(),
+      role: agentRole,
+    });
+  };
+
+  // Editar permissões (role)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editRole, setEditRole] = useState<"agent" | "admin">("agent");
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      role: "agent" | "admin";
+    }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ role: payload.role })
+        .eq("id", payload.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      toast({
+        title: "Permissões atualizadas",
+        description: "O papel do agente foi alterado.",
+      });
+      setEditingMember(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao atualizar permissões",
+        description: err?.message ?? "Não foi possível alterar o papel.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset password (envia e-mail de reset)
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/login`
+          : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "E-mail de redefinição enviado",
+        description:
+          "O agente receberá um e-mail para redefinir a senha (configurar no painel do Supabase).",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao enviar e-mail",
+        description:
+          err?.message ?? "Não foi possível enviar o e-mail de redefinição.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleResetPassword = (member: TeamMember) => {
+    if (!member.email) {
+      toast({
+        title: "Sem e-mail",
+        description:
+          "Esse agente não possui e-mail cadastrado em profiles.",
+        variant: "destructive",
+      });
+      return;
+    }
+    resetPasswordMutation.mutate(member.email);
+  };
+
+  // Remover agente (remove da tabela profiles)
+  const removeAgentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      toast({
+        title: "Agente removido",
+        description: "O agente foi removido da equipe.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao remover agente",
+        description: err?.message ?? "Não foi possível remover o agente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRemoveAgent = (member: TeamMember) => {
+    removeAgentMutation.mutate(member.id);
+  };
+
+  // Email settings stub
+  const handleSaveSettings = () => {
+    toast({
+      title: "Settings Saved",
+      description: "Your configuration has been updated successfully.",
+    });
+  };
+
   const handleTestConnection = () => {
     setIsTestingConnection(true);
     setConnectionStatus("idle");
 
-    // Simula teste de conexão (por enquanto não integra com backend)
     setTimeout(() => {
       setIsTestingConnection(false);
       setConnectionStatus("success");
@@ -99,13 +368,6 @@ export default function SettingsPage() {
         description: "Successfully connected to IMAP and SMTP servers.",
       });
     }, 2000);
-  };
-
-  const handleSave = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Your configuration has been updated successfully.",
-    });
   };
 
   return (
@@ -120,8 +382,9 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="email" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[520px]">
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
             <TabsTrigger value="general">
               {t("settings.general")}
             </TabsTrigger>
@@ -137,6 +400,112 @@ export default function SettingsPage() {
           </TabsList>
 
           <div className="mt-6">
+            {/* --------- Aba Perfil --------- */}
+            <TabsContent value="profile" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Perfil</CardTitle>
+                  <CardDescription>
+                    Atualize seu nome e foto de perfil.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isLoadingProfile && (
+                    <p className="text-sm text-muted-foreground">
+                      Carregando perfil...
+                    </p>
+                  )}
+                  {profileError && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="h-4 w-4" />
+                      Não foi possível carregar o perfil.
+                    </p>
+                  )}
+
+                  {profile && (
+                    <form
+                      className="space-y-6"
+                      onSubmit={handleSaveProfile}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16 border">
+                          <AvatarImage
+                            src={avatarUrlInput || profile.avatar_url || ""}
+                          />
+                          <AvatarFallback>
+                            {(fullName || profile.full_name || "U")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="text-sm text-muted-foreground">
+                          Use uma URL de imagem ou deixe em branco
+                          para usar a inicial do nome.
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="full-name">
+                            Nome completo
+                          </Label>
+                          <Input
+                            id="full-name"
+                            value={fullName}
+                            onChange={(e) =>
+                              setFullName(e.target.value)
+                            }
+                            placeholder="Seu nome"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="profile-email">
+                            E-mail
+                          </Label>
+                          <Input
+                            id="profile-email"
+                            value={profile.email || user?.email || ""}
+                            disabled
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            O e-mail de login é gerenciado pelo
+                            Supabase Auth.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="avatar-url">
+                          Avatar URL
+                        </Label>
+                        <Input
+                          id="avatar-url"
+                          value={avatarUrlInput}
+                          onChange={(e) =>
+                            setAvatarUrlInput(e.target.value)
+                          }
+                          placeholder="https://exemplo.com/minha-foto.jpg"
+                        />
+                      </div>
+
+                      <CardFooter className="px-0">
+                        <Button
+                          type="submit"
+                          disabled={updateProfileMutation.isLoading}
+                        >
+                          {updateProfileMutation.isLoading
+                            ? "Salvando..."
+                            : t("settings.save")}
+                        </Button>
+                      </CardFooter>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* --------- Aba Geral --------- */}
             <TabsContent value="general" className="space-y-6">
               <Card>
                 <CardHeader>
@@ -147,7 +516,9 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="desk-name">Help Desk Name</Label>
+                    <Label htmlFor="desk-name">
+                      Help Desk Name
+                    </Label>
                     <Input
                       id="desk-name"
                       defaultValue="HelpDesk Pro Support"
@@ -162,18 +533,20 @@ export default function SettingsPage() {
                       defaultValue="support@company.com"
                     />
                     <p className="text-xs text-muted-foreground">
-                      This is the email address displayed to customers.
+                      This is the email address displayed to
+                      customers.
                     </p>
                   </div>
                 </CardContent>
                 <CardFooter className="border-t bg-muted/20 px-6 py-4">
-                  <Button onClick={handleSave}>
+                  <Button onClick={handleSaveSettings}>
                     {t("settings.save")}
                   </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
 
+            {/* --------- Aba Email --------- */}
             <TabsContent value="email" className="space-y-6">
               <div className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -356,7 +729,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <Button onClick={handleSave}>
+                  <Button onClick={handleSaveSettings}>
                     <Save className="mr-2 h-4 w-4" />
                     {t("settings.save")}
                   </Button>
@@ -364,6 +737,7 @@ export default function SettingsPage() {
               </Card>
             </TabsContent>
 
+            {/* --------- Aba Spam --------- */}
             <TabsContent value="spam" className="space-y-6">
               <Card>
                 <CardHeader>
@@ -469,13 +843,14 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="border-t bg-muted/20 px-6 py-4">
-                  <Button onClick={handleSave}>
+                  <Button onClick={handleSaveSettings}>
                     {t("settings.save")}
                   </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
 
+            {/* --------- Aba Equipe --------- */}
             <TabsContent value="team" className="space-y-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -485,10 +860,88 @@ export default function SettingsPage() {
                       Manage agents and their permissions.
                     </CardDescription>
                   </div>
-                  <Button>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add Agent
-                  </Button>
+                  <Dialog
+                    open={isAddAgentOpen}
+                    onOpenChange={setIsAddAgentOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add Agent
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[420px]">
+                      <DialogHeader>
+                        <DialogTitle>Add Agent</DialogTitle>
+                        <DialogDescription>
+                          Cria apenas o registro em{" "}
+                          <code>profiles</code>. Para login, crie o
+                          usuário também no Supabase Auth.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form
+                        onSubmit={handleAddAgent}
+                        className="space-y-4 pt-2"
+                      >
+                        <div className="grid gap-2">
+                          <Label htmlFor="agent-name">Name</Label>
+                          <Input
+                            id="agent-name"
+                            value={agentName}
+                            onChange={(e) =>
+                              setAgentName(e.target.value)
+                            }
+                            placeholder="Nome do agente"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="agent-email">Email</Label>
+                          <Input
+                            id="agent-email"
+                            type="email"
+                            value={agentEmail}
+                            onChange={(e) =>
+                              setAgentEmail(e.target.value)
+                            }
+                            placeholder="agente@empresa.com"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Papel</Label>
+                          <Select
+                            value={agentRole}
+                            onValueChange={(v) =>
+                              setAgentRole(v as "agent" | "admin")
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="agent">
+                                Agent
+                              </SelectItem>
+                              <SelectItem value="admin">
+                                Admin
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="submit"
+                            disabled={addAgentMutation.isLoading}
+                          >
+                            {addAgentMutation.isLoading
+                              ? "Salvando..."
+                              : "Salvar"}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -534,10 +987,9 @@ export default function SettingsPage() {
                               colSpan={5}
                               className="py-6 text-center text-sm text-muted-foreground"
                             >
-                              No agents found. Convert users em{" "}
+                              No agents found. Crie registros em{" "}
                               <code>profiles</code> com role{" "}
-                              <code>agent</code> ou{" "}
-                              <code>admin</code>.
+                              <code>agent</code> ou <code>admin</code>.
                             </TableCell>
                           </TableRow>
                         )}
@@ -589,13 +1041,31 @@ export default function SettingsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingMember(member);
+                                      setEditRole(
+                                        (member.role as
+                                          | "agent"
+                                          | "admin") || "agent",
+                                      );
+                                    }}
+                                  >
                                     Edit Permissions
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleResetPassword(member)
+                                    }
+                                  >
                                     Reset Password
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() =>
+                                      handleRemoveAgent(member)
+                                    }
+                                  >
                                     Remove Agent
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -607,6 +1077,77 @@ export default function SettingsPage() {
                   </Table>
                 </CardContent>
               </Card>
+
+              {/* Dialog para editar permissões */}
+              <Dialog
+                open={!!editingMember}
+                onOpenChange={(open) =>
+                  !open && setEditingMember(null)
+                }
+              >
+                <DialogContent className="sm:max-w-[380px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Permissions</DialogTitle>
+                    <DialogDescription>
+                      Ajuste o papel do agente (agent / admin).
+                    </DialogDescription>
+                  </DialogHeader>
+                  {editingMember && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        updateRoleMutation.mutate({
+                          id: editingMember.id,
+                          role: editRole,
+                        });
+                      }}
+                      className="space-y-4 pt-2"
+                    >
+                      <div className="text-sm">
+                        <span className="font-medium">
+                          {editingMember.full_name || "Unnamed"}
+                        </span>
+                        {editingMember.email && (
+                          <span className="block text-muted-foreground">
+                            {editingMember.email}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Papel</Label>
+                        <Select
+                          value={editRole}
+                          onValueChange={(v) =>
+                            setEditRole(v as "agent" | "admin")
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="agent">
+                              Agent
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              Admin
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          disabled={updateRoleMutation.isLoading}
+                        >
+                          {updateRoleMutation.isLoading
+                            ? "Salvando..."
+                            : "Salvar"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  )}
+                </DialogContent>
+              </Dialog>
             </TabsContent>
           </div>
         </Tabs>
