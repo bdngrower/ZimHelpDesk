@@ -1,5 +1,4 @@
 import Layout from "@/components/layout";
-import { MOCK_TICKETS } from "@/lib/mock-data";
 import { 
   Table, 
   TableBody, 
@@ -26,6 +25,9 @@ import { Filter, Plus, Search } from "lucide-react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/language-context";
 
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+
 const STATUS_COLORS = {
   open: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
@@ -42,6 +44,35 @@ const PRIORITY_COLORS = {
 
 export default function DashboardPage() {
   const { t } = useLanguage();
+
+  // === LOAD TICKETS REAL DATA ===
+  const { data: tickets, isLoading } = useQuery({
+    queryKey: ["dashboard_tickets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tickets")
+        .select(`
+          id,
+          subject,
+          description,
+          status,
+          priority,
+          created_at,
+          requester:profiles!tickets_requester_id_fkey(id, full_name, avatar_url),
+          assignee:profiles!tickets_assignee_id_fkey(id, full_name, avatar_url)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // === COUNTS ===
+  const openCount = tickets?.filter(t => t.status === "open").length ?? 0;
+  const pendingCount = tickets?.filter(t => t.status === "in_progress").length ?? 0;
+  const resolvedCount = tickets?.filter(t => t.status === "resolved").length ?? 0;
 
   return (
     <Layout>
@@ -60,6 +91,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
+          {/* OPEN TICKETS */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('dashboard.open_tickets')}</CardTitle>
@@ -68,10 +100,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">+2 since last hour</p>
+              <div className="text-2xl font-bold">{openCount}</div>
+              <p className="text-xs text-muted-foreground">Real data</p>
             </CardContent>
           </Card>
+
+          {/* PENDING */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('dashboard.pending')}</CardTitle>
@@ -80,10 +114,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">4</div>
-              <p className="text-xs text-muted-foreground">-1 since yesterday</p>
+              <div className="text-2xl font-bold">{pendingCount}</div>
+              <p className="text-xs text-muted-foreground">Real data</p>
             </CardContent>
           </Card>
+
+          {/* AVG TIME (placeholder until SLA logic exists) */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('dashboard.avg_time')}</CardTitle>
@@ -92,8 +128,8 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1h 24m</div>
-              <p className="text-xs text-muted-foreground">-12% from last week</p>
+              <div className="text-2xl font-bold">–</div>
+              <p className="text-xs text-muted-foreground">Not implemented</p>
             </CardContent>
           </Card>
         </div>
@@ -140,14 +176,24 @@ export default function DashboardPage() {
                   <TableHead className="text-right">{t('table.created')}</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {MOCK_TICKETS.map((ticket) => (
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!isLoading && tickets?.map(ticket => (
                   <TableRow key={ticket.id} className="group cursor-pointer hover:bg-muted/30">
                     <TableCell className="font-medium">
                       <Link href={`/ticket/${ticket.id}`} className="block w-full text-primary hover:underline">
                         {ticket.id}
                       </Link>
                     </TableCell>
+
                     <TableCell>
                       <Link href={`/ticket/${ticket.id}`} className="block w-full">
                         <div className="font-medium text-foreground group-hover:text-primary transition-colors">
@@ -158,44 +204,57 @@ export default function DashboardPage() {
                         </div>
                       </Link>
                     </TableCell>
+
                     <TableCell>
                       <Badge variant="outline" className={`border font-normal capitalize shadow-sm ${STATUS_COLORS[ticket.status]}`}>
                         {t(`status.${ticket.status}`)}
                       </Badge>
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${PRIORITY_COLORS[ticket.priority].replace('text-', 'bg-')}`} />
+                        <div className={`h-2 w-2 rounded-full ${PRIORITY_COLORS[ticket.priority].replace("text-", "bg-")}`} />
                         <span className="capitalize text-sm">{t(`priority.${ticket.priority}`)}</span>
                       </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={ticket.customer.avatar} />
-                          <AvatarFallback>{ticket.customer.name.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={ticket.requester?.avatar_url || ""} />
+                          <AvatarFallback>{ticket.requester?.full_name?.charAt(0) ?? "?"}</AvatarFallback>
                         </Avatar>
-                        <span className="text-sm">{ticket.customer.name}</span>
+                        <span className="text-sm">{ticket.requester?.full_name || "Unknown"}</span>
                       </div>
                     </TableCell>
+
                     <TableCell>
                       {ticket.assignee ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={ticket.assignee.avatar} />
-                            <AvatarFallback>{ticket.assignee.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={ticket.assignee?.avatar_url || ""} />
+                            <AvatarFallback>{ticket.assignee?.full_name?.charAt(0) ?? "?"}</AvatarFallback>
                           </Avatar>
-                          <span className="text-sm">{ticket.assignee.name}</span>
+                          <span className="text-sm">{ticket.assignee?.full_name}</span>
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">Unassigned</span>
                       )}
                     </TableCell>
+
                     <TableCell className="text-right text-muted-foreground text-sm">
-                      {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true })}
                     </TableCell>
                   </TableRow>
                 ))}
+
+                {!isLoading && tickets?.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No tickets found.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
