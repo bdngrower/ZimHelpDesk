@@ -1,22 +1,22 @@
 import { useState } from "react";
 import Layout from "@/components/layout";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuCheckboxItem, 
-  DropdownMenuContent, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,7 +26,11 @@ import { Filter, Plus, Search, Loader2, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/language-context";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth-context";
 
@@ -51,17 +55,22 @@ import { Textarea } from "@/components/ui/textarea";
 
 const STATUS_COLORS = {
   open: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
-  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-  resolved: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800",
-  closed: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+  in_progress:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+  resolved:
+    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800",
+  closed:
+    "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400 border-slate-200 dark:border-slate-700",
 };
 
 const PRIORITY_COLORS = {
   low: "text-slate-500",
   medium: "text-blue-500",
   high: "text-orange-500",
-  urgent: "text-red-500"
+  urgent: "text-red-500",
 };
+
+type TicketPriority = "low" | "medium" | "high" | "urgent";
 
 export default function DashboardPage() {
   const { t } = useLanguage();
@@ -70,9 +79,10 @@ export default function DashboardPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [subject, setSubject] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [priority, setPriority] = useState<TicketPriority>("medium");
   const [description, setDescription] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [requesterId, setRequesterId] = useState<string>("");
 
   // === LOAD TICKETS REAL DATA ===
   const { data: tickets, isLoading } = useQuery({
@@ -82,6 +92,7 @@ export default function DashboardPage() {
         .from("tickets")
         .select(`
           id,
+          ticket_number,
           subject,
           description,
           status,
@@ -98,16 +109,34 @@ export default function DashboardPage() {
     },
   });
 
+  // === LOAD CUSTOMERS (profiles com role = 'customer') ===
+  const { data: customers, isLoading: isLoadingCustomers } = useQuery({
+    queryKey: ["customers_for_new_ticket"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("role", "customer")
+        .order("full_name", { ascending: true });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // === CREATE TICKET MUTATION ===
   const createTicketMutation = useMutation({
     mutationFn: async (payload: {
       subject: string;
       description: string;
-      priority: "low" | "medium" | "high" | "urgent";
+      priority: TicketPriority;
+      requester_id?: string;
     }) => {
-      if (!user) {
+      if (!user && !payload.requester_id) {
         throw new Error("Usuário não autenticado.");
       }
+
+      const finalRequesterId = payload.requester_id || user?.id;
 
       const { data, error } = await supabase
         .from("tickets")
@@ -116,7 +145,7 @@ export default function DashboardPage() {
           description: payload.description,
           priority: payload.priority,
           status: "open",
-          requester_id: user.id,
+          requester_id: finalRequesterId,
         })
         .select("id")
         .single();
@@ -125,13 +154,13 @@ export default function DashboardPage() {
       return data;
     },
     onSuccess: () => {
-      // Recarrega dashboard e listagem geral de tickets
       queryClient.invalidateQueries({ queryKey: ["dashboard_tickets"] });
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
 
       setSubject("");
       setDescription("");
       setPriority("medium");
+      setRequesterId("");
       setSubmitError(null);
       setIsDialogOpen(false);
     },
@@ -153,13 +182,17 @@ export default function DashboardPage() {
       subject: subject.trim(),
       description: description.trim(),
       priority,
+      requester_id: requesterId || undefined,
     });
   }
 
   // === COUNTS ===
-  const openCount = tickets?.filter((t: any) => t.status === "open").length ?? 0;
-  const pendingCount = tickets?.filter((t: any) => t.status === "in_progress").length ?? 0;
-  const resolvedCount = tickets?.filter((t: any) => t.status === "resolved").length ?? 0;
+  const openCount =
+    tickets?.filter((t: any) => t.status === "open").length ?? 0;
+  const pendingCount =
+    tickets?.filter((t: any) => t.status === "in_progress").length ?? 0;
+  const resolvedCount =
+    tickets?.filter((t: any) => t.status === "resolved").length ?? 0;
 
   return (
     <Layout>
@@ -169,7 +202,9 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               {t("dashboard.title")}
             </h1>
-            <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
+            <p className="text-muted-foreground">
+              {t("dashboard.subtitle")}
+            </p>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -179,15 +214,19 @@ export default function DashboardPage() {
                 {t("dashboard.new_ticket")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
                 <DialogTitle>{t("dashboard.new_ticket")}</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados para abrir um novo chamado. Ele será criado no Supabase com status &quot;open&quot;.
+                  Preencha os dados para abrir um novo chamado. Ele será
+                  criado no Supabase com status &quot;open&quot;.
                 </DialogDescription>
               </DialogHeader>
 
-              <form onSubmit={handleCreateTicket} className="grid gap-4 py-4">
+              <form
+                onSubmit={handleCreateTicket}
+                className="grid gap-4 py-4"
+              >
                 <div className="grid gap-2">
                   <Label htmlFor="subject">Assunto</Label>
                   <Input
@@ -199,13 +238,44 @@ export default function DashboardPage() {
                   />
                 </div>
 
+                <div className="grid gap-2">
+                  <Label htmlFor="requester">Solicitante / Cliente</Label>
+                  {isLoadingCustomers ? (
+                    <div className="text-xs text-muted-foreground">
+                      Carregando clientes...
+                    </div>
+                  ) : customers && customers.length > 0 ? (
+                    <Select
+                      value={requesterId}
+                      onValueChange={(value) => setRequesterId(value)}
+                    >
+                      <SelectTrigger id="requester">
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.full_name || c.email}{" "}
+                            {c.email ? `(${c.email})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      Nenhum cliente encontrado. O chamado será aberto em
+                      seu usuário.
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="priority">Prioridade</Label>
                     <Select
                       value={priority}
                       onValueChange={(value: any) =>
-                        setPriority(value as "low" | "medium" | "high" | "urgent")
+                        setPriority(value as TicketPriority)
                       }
                     >
                       <SelectTrigger id="priority">
@@ -292,7 +362,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* RESOLVED (só contador por enquanto) */}
+          {/* RESOLVED */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -350,7 +420,9 @@ export default function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[100px]">{t("table.id")}</TableHead>
+                  <TableHead className="w-[100px]">
+                    {t("table.id")}
+                  </TableHead>
                   <TableHead className="min-w-[300px]">
                     {t("table.subject")}
                   </TableHead>
@@ -367,114 +439,128 @@ export default function DashboardPage() {
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-8"
+                    >
                       Loading...
                     </TableCell>
                   </TableRow>
                 )}
 
                 {!isLoading &&
-                  tickets?.map((ticket: any) => (
-                    <TableRow
-                      key={ticket.id}
-                      className="group cursor-pointer hover:bg-muted/30"
-                    >
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/ticket/${ticket.id}`}
-                          className="block w-full text-primary hover:underline"
-                        >
-                          {ticket.id}
-                        </Link>
-                      </TableCell>
+                  tickets?.map((ticket: any) => {
+                    const displayId =
+                      ticket.ticket_number ??
+                      String(ticket.id).slice(0, 8);
 
-                      <TableCell>
-                        <Link
-                          href={`/ticket/${ticket.id}`}
-                          className="block w-full"
-                        >
-                          <div className="font-medium text-foreground group-hover:text-primary transition-colors">
-                            {ticket.subject}
-                          </div>
-                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                            {ticket.description}
-                          </div>
-                        </Link>
-                      </TableCell>
+                    return (
+                      <TableRow
+                        key={ticket.id}
+                        className="group cursor-pointer hover:bg-muted/30"
+                      >
+                        <TableCell className="font-medium">
+                          <Link
+                            href={`/ticket/${ticket.id}`}
+                            className="block w-full text-primary hover:underline"
+                          >
+                            {displayId}
+                          </Link>
+                        </TableCell>
 
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`border font-normal capitalize shadow-sm ${
-                            STATUS_COLORS[
-                              ticket.status as keyof typeof STATUS_COLORS
-                            ]
-                          }`}
-                        >
-                          {t(`status.${ticket.status}`)}
-                        </Badge>
-                      </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/ticket/${ticket.id}`}
+                            className="block w-full"
+                          >
+                            <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                              {ticket.subject}
+                            </div>
+                            <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {ticket.description}
+                            </div>
+                          </Link>
+                        </TableCell>
 
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-2 w-2 rounded-full ${
-                              PRIORITY_COLORS[
-                                ticket.priority as keyof typeof PRIORITY_COLORS
-                              ].replace("text-", "bg-")
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`border font-normal capitalize shadow-sm ${
+                              STATUS_COLORS[
+                                ticket.status as keyof typeof STATUS_COLORS
+                              ]
                             }`}
-                          />
-                          <span className="capitalize text-sm">
-                            {t(`priority.${ticket.priority}`)}
-                          </span>
-                        </div>
-                      </TableCell>
+                          >
+                            {t(`status.${ticket.status}`)}
+                          </Badge>
+                        </TableCell>
 
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage
-                              src={ticket.requester?.avatar_url || ""}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`h-2 w-2 rounded-full ${
+                                PRIORITY_COLORS[
+                                  ticket.priority as keyof typeof PRIORITY_COLORS
+                                ].replace("text-", "bg-")
+                              }`}
                             />
-                            <AvatarFallback>
-                              {ticket.requester?.full_name?.charAt(0) ?? "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">
-                            {ticket.requester?.full_name || "Unknown"}
-                          </span>
-                        </div>
-                      </TableCell>
+                            <span className="capitalize text-sm">
+                              {t(`priority.${ticket.priority}`)}
+                            </span>
+                          </div>
+                        </TableCell>
 
-                      <TableCell>
-                        {ticket.assignee ? (
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarImage
-                                src={ticket.assignee?.avatar_url || ""}
+                                src={ticket.requester?.avatar_url || ""}
                               />
                               <AvatarFallback>
-                                {ticket.assignee?.full_name?.charAt(0) ?? "?"}
+                                {ticket.requester?.full_name?.charAt(0) ??
+                                  "?"}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm">
-                              {ticket.assignee?.full_name}
+                              {ticket.requester?.full_name || "Unknown"}
                             </span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">
-                            Unassigned
-                          </span>
-                        )}
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell className="text-right text-muted-foreground text-sm">
-                        {formatDistanceToNow(new Date(ticket.created_at), {
-                          addSuffix: true,
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell>
+                          {ticket.assignee ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage
+                                  src={ticket.assignee?.avatar_url || ""}
+                                />
+                                <AvatarFallback>
+                                  {ticket.assignee?.full_name?.charAt(0) ??
+                                    "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">
+                                {ticket.assignee?.full_name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                              Unassigned
+                            </span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-right text-muted-foreground text-sm">
+                          {formatDistanceToNow(
+                            new Date(ticket.created_at),
+                            {
+                              addSuffix: true,
+                            },
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
 
                 {!isLoading && tickets?.length === 0 && (
                   <TableRow>
