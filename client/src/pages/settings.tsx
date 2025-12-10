@@ -350,13 +350,18 @@ export default function SettingsPage() {
       email: string;
       role: "agent" | "admin";
     }) => {
-      const { error } = await supabase.from("profiles").insert({
-        full_name: payload.full_name,
-        email: payload.email,
-        role: payload.role,
+      const res = await fetch("/api/admin/agents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Erro ao criar agente");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
@@ -367,10 +372,11 @@ export default function SettingsPage() {
       toast({
         title: "Agente criado",
         description:
-          "O agente foi adicionado à equipe. Crie o usuário de login no Supabase Auth se necessário.",
+          "O agente foi criado no Auth e adicionado à tabela de profiles.",
       });
     },
     onError: (err: any) => {
+      console.error("Erro ao criar agente", err);
       toast({
         title: "Erro ao criar agente",
         description: err?.message ?? "Não foi possível criar o agente.",
@@ -473,17 +479,20 @@ export default function SettingsPage() {
   // Remover agente
   const removeAgentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      const res = await fetch(`/api/admin/agents/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Erro ao remover agente");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
       toast({
         title: "Agente removido",
-        description: "O agente foi removido da equipe.",
+        description: "O agente foi removido do Auth e da equipe.",
       });
     },
     onError: (err: any) => {
@@ -1164,9 +1173,8 @@ export default function SettingsPage() {
                       <DialogHeader>
                         <DialogTitle>Add Agent</DialogTitle>
                         <DialogDescription>
-                          Cria apenas o registro em{" "}
-                          <code>profiles</code>. Para login, crie o
-                          usuário também no Supabase Auth.
+                          Cria o usuário no Supabase Auth e o registro em{" "}
+                          <code>profiles</code>.
                         </DialogDescription>
                       </DialogHeader>
                       <form
