@@ -39,7 +39,6 @@ import {
   startOfMonth,
   startOfYear,
   subMonths,
-  isAfter,
 } from "date-fns";
 import { format } from "date-fns";
 
@@ -227,8 +226,9 @@ export default function ReportsPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
+        {/* HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               {t("reports.title")}
             </h1>
@@ -241,27 +241,32 @@ export default function ReportsPage() {
               value={period}
               onValueChange={(value: Period) => setPeriod(value)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[190px] rounded-full">
                 <Calendar className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="this_week">This Week</SelectItem>
                 <SelectItem value="this_month">This Month</SelectItem>
-                <SelectItem value="last_month">Last Month</SelectItem>
+                <SelectItem value="last_month">
+                  Last Month
+                </SelectItem>
                 <SelectItem value="this_year">This Year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export PDF
+            <Button
+              variant="outline"
+              className="gap-2 rounded-full border-dashed transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export PDF</span>
             </Button>
           </div>
         </div>
 
         {/* KPIs */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total Tickets
@@ -277,7 +282,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Resolution Rate
@@ -296,7 +301,7 @@ export default function ReportsPage() {
           </Card>
 
           {/* Ainda placeholders por enquanto */}
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Avg. Reply Time
@@ -310,7 +315,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Customer Satisfaction
@@ -327,7 +332,7 @@ export default function ReportsPage() {
 
         {/* Linha + Pizza */}
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="col-span-1">
+          <Card className="col-span-1 border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader>
               <CardTitle>
                 {t("reports.tickets_over_time")}
@@ -379,7 +384,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-1">
+          <Card className="col-span-1 border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader>
               <CardTitle>
                 {t("reports.tickets_by_status")}
@@ -417,7 +422,7 @@ export default function ReportsPage() {
 
         {/* Agentes + Clientes */}
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="col-span-1">
+          <Card className="col-span-1 border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader>
               <CardTitle>
                 {t("reports.tickets_by_assignee")}
@@ -474,7 +479,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-1">
+          <Card className="col-span-1 border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader>
               <CardTitle>
                 {t("reports.top_customers")}
