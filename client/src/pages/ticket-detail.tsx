@@ -120,8 +120,12 @@ export default function TicketDetailPage() {
   if (!ticketId) {
     return (
       <Layout>
-        <div className="p-6 text-sm text-red-500">
-          Ticket ID inválido na URL.
+        <div className="p-6 flex items-center justify-center">
+          <Card className="w-full max-w-md border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm">
+            <CardContent className="pt-6 text-sm text-red-500">
+              Ticket ID inválido na URL.
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -130,7 +134,13 @@ export default function TicketDetailPage() {
   if (isLoadingTicket) {
     return (
       <Layout>
-        <div className="p-6 text-sm text-muted-foreground">Carregando ticket...</div>
+        <div className="p-6 flex items-center justify-center">
+          <Card className="w-full max-w-md border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm">
+            <CardContent className="pt-6 text-sm text-muted-foreground">
+              Carregando ticket...
+            </CardContent>
+          </Card>
+        </div>
       </Layout>
     );
   }
@@ -138,8 +148,12 @@ export default function TicketDetailPage() {
   if (ticketError || !ticket) {
     return (
       <Layout>
-        <div className="p-6 text-sm text-red-500">
-          Não foi possível carregar o ticket.
+        <div className="p-6 flex items-center justify-center">
+          <Card className="w-full max-w-md border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm">
+            <CardContent className="pt-6 text-sm text-red-500">
+              Não foi possível carregar o ticket.
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -151,14 +165,14 @@ export default function TicketDetailPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col h-[calc(100vh-8rem)] gap-4">
         {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-2 flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Link
                 href="/dashboard"
-                className="hover:text-primary flex items-center gap-1"
+                className="hover:text-primary flex items-center gap-1 transition-colors"
               >
                 <ArrowLeft className="h-3 w-3" />
                 {t("ticket.back")}
@@ -176,7 +190,7 @@ export default function TicketDetailPage() {
             <div className="flex items-center gap-3">
               <Badge
                 variant="outline"
-                className={`border font-normal capitalize ${
+                className={`border font-normal capitalize shadow-sm ${
                   STATUS_COLORS[
                     ticket.status as keyof typeof STATUS_COLORS
                   ]
@@ -194,19 +208,26 @@ export default function TicketDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">{t("ticket.close")}</Button>
-            <Button>{t("ticket.update")}</Button>
+            <Button
+              variant="outline"
+              className="rounded-full px-4 shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5"
+            >
+              {t("ticket.close")}
+            </Button>
+            <Button className="rounded-full px-4 shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5">
+              {t("ticket.update")}
+            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 h-full min-h-0">
           {/* Main Content - Conversation */}
           <div className="flex flex-col gap-4 h-full min-h-0">
-            <ScrollArea className="flex-1 rounded-lg border bg-card shadow-sm p-4">
+            <ScrollArea className="flex-1 rounded-lg border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm p-4 transition-all duration-150 hover:shadow-md">
               <div className="space-y-6">
                 {/* Original Request */}
                 <div className="flex gap-4">
-                  <Avatar className="h-10 w-10 border mt-1">
+                  <Avatar className="h-10 w-10 border mt-1 shadow-sm">
                     <AvatarImage src={requester?.avatar_url || ""} />
                     <AvatarFallback>
                       {requester?.full_name?.charAt(0) ?? "?"}
@@ -267,7 +288,7 @@ export default function TicketDetailPage() {
                             : ""
                         }`}
                       >
-                        <Avatar className="h-10 w-10 border mt-1">
+                        <Avatar className="h-10 w-10 border mt-1 shadow-sm">
                           <AvatarImage
                             src={sender?.avatar_url || ""}
                           />
@@ -309,14 +330,14 @@ export default function TicketDetailPage() {
             </ScrollArea>
 
             {/* Reply Area (ainda sem persistir no Supabase) */}
-            <Card className="shadow-sm border-t-4 border-t-primary/20">
+            <Card className="shadow-sm border border-border/60 bg-card/80 backdrop-blur-sm border-t-4 border-t-primary/30 transition-all duration-150 hover:shadow-md">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center gap-4 border-b pb-4">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="bg-muted text-foreground hover:bg-muted/80 h-8"
+                      className="bg-muted text-foreground hover:bg-muted/80 h-8 rounded-full px-3"
                     >
                       <Reply className="mr-2 h-4 w-4" />{" "}
                       {t("ticket.reply")}
@@ -324,7 +345,7 @@ export default function TicketDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 text-muted-foreground hover:text-foreground"
+                      className="h-8 text-muted-foreground hover:text-foreground rounded-full px-3"
                     >
                       <Lock className="mr-2 h-4 w-4" />{" "}
                       {t("ticket.internal")}
@@ -333,21 +354,26 @@ export default function TicketDetailPage() {
                 </div>
                 <Textarea
                   placeholder="Type your reply here..."
-                  className="min-h-[120px] resize-none border-0 focus-visible:ring-0 px-0"
+                  className="min-h-[120px] resize-none border-0 focus-visible:ring-0 px-0 bg-transparent"
                 />
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground"
+                      className="h-8 w-8 text-muted-foreground rounded-full hover:bg-muted"
                     >
                       <Paperclip className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline">Save as Draft</Button>
-                    <Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-full px-4"
+                    >
+                      Save as Draft
+                    </Button>
+                    <Button className="rounded-full px-5">
                       <Send className="mr-2 h-4 w-4" />{" "}
                       {t("ticket.send")}
                     </Button>
@@ -359,7 +385,7 @@ export default function TicketDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <Card>
+            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
               <CardHeader className="pb-3 border-b bg-muted/20">
                 <CardTitle className="text-sm font-medium">
                   {t("ticket.details")}
@@ -371,7 +397,7 @@ export default function TicketDetailPage() {
                     {t("table.assignee")}
                   </label>
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-card hover:bg-muted/50 cursor-pointer transition-colors">
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-6 w-6 border">
                       <AvatarImage
                         src={assignee?.avatar_url || ""}
                       />
@@ -390,7 +416,7 @@ export default function TicketDetailPage() {
                     {t("table.status")}
                   </label>
                   <Select defaultValue={ticket.status}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-muted/30 hover:bg-muted/40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -415,7 +441,7 @@ export default function TicketDetailPage() {
                     {t("table.priority")}
                   </label>
                   <Select defaultValue={ticket.priority}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-muted/30 hover:bg-muted/40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -452,7 +478,7 @@ export default function TicketDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-5 px-2 text-[10px]"
+                      className="h-5 px-2 text-[10px] rounded-full"
                     >
                       + Add
                     </Button>
@@ -461,7 +487,7 @@ export default function TicketDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
               <CardHeader className="pb-3 border-b bg-muted/20">
                 <CardTitle className="text-sm font-medium">
                   {t("ticket.requester_info")}
@@ -469,7 +495,7 @@ export default function TicketDetailPage() {
               </CardHeader>
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border">
+                  <Avatar className="h-10 w-10 border shadow-sm">
                     <AvatarImage
                       src={requester?.avatar_url || ""}
                     />
@@ -489,7 +515,7 @@ export default function TicketDetailPage() {
 
                 <Separator />
 
-                {/* Esses números ainda estão mockados até termos métrica real */}
+                {/* Ainda mock até termos métrica real */}
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
@@ -505,7 +531,10 @@ export default function TicketDetailPage() {
                   </div>
                 </div>
 
-                <Button variant="outline" className="w-full text-xs h-8">
+                <Button
+                  variant="outline"
+                  className="w-full text-xs h-8 rounded-full"
+                >
                   View Customer Profile
                 </Button>
               </CardContent>
