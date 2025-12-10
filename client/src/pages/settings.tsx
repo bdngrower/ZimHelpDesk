@@ -69,6 +69,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTheme } from "next-themes";
 
 type TeamMember = {
   id: string;
@@ -101,11 +102,15 @@ export default function SettingsPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
+
+  const effectiveTheme =
+    theme === "light" || theme === "dark" ? theme : "dark";
 
   // -------- PERFIL --------
   const {
@@ -708,6 +713,32 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground">
                       This is the email address displayed to
                       customers.
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="theme-select">
+                      Tema da interface
+                    </Label>
+                    <Select
+                      value={effectiveTheme}
+                      onValueChange={(value) =>
+                        setTheme(value as "light" | "dark")
+                      }
+                    >
+                      <SelectTrigger id="theme-select" className="w-[220px]">
+                        <SelectValue placeholder="Selecione o tema" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Claro</SelectItem>
+                        <SelectItem value="dark">Escuro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      No modo escuro o fundo fica cinza bem escuro com destaques
+                      em azul, ideal para uso prolongado.
                     </p>
                   </div>
                 </CardContent>
