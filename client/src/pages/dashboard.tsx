@@ -197,8 +197,9 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               {t("dashboard.title")}
             </h1>
@@ -209,17 +210,20 @@ export default function DashboardPage() {
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                {t("dashboard.new_ticket")}
+              <Button className="gap-2 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+                <Plus className="h-4 w-4" />
+                <span>{t("dashboard.new_ticket")}</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
-                <DialogTitle>{t("dashboard.new_ticket")}</DialogTitle>
+                <DialogTitle className="text-lg font-semibold">
+                  {t("dashboard.new_ticket")}
+                </DialogTitle>
                 <DialogDescription>
                   Preencha os dados para abrir um novo chamado. Ele será
-                  criado no Supabase com status &quot;open&quot;.
+                  criado no Supabase com status{" "}
+                  <span className="font-semibold">&quot;open&quot;</span>.
                 </DialogDescription>
               </DialogHeader>
 
@@ -235,6 +239,7 @@ export default function DashboardPage() {
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Ex.: Erro ao acessar o painel"
                     required
+                    className="rounded-lg"
                   />
                 </div>
 
@@ -249,7 +254,7 @@ export default function DashboardPage() {
                       value={requesterId}
                       onValueChange={(value) => setRequesterId(value)}
                     >
-                      <SelectTrigger id="requester">
+                      <SelectTrigger id="requester" className="rounded-lg">
                         <SelectValue placeholder="Selecione o cliente" />
                       </SelectTrigger>
                       <SelectContent>
@@ -278,7 +283,10 @@ export default function DashboardPage() {
                         setPriority(value as TicketPriority)
                       }
                     >
-                      <SelectTrigger id="priority">
+                      <SelectTrigger
+                        id="priority"
+                        className="rounded-lg"
+                      >
                         <SelectValue placeholder="Selecione a prioridade" />
                       </SelectTrigger>
                       <SelectContent>
@@ -299,6 +307,7 @@ export default function DashboardPage() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Descreva o problema com o máximo de detalhes possível..."
                     rows={4}
+                    className="rounded-lg"
                   />
                 </div>
 
@@ -313,11 +322,12 @@ export default function DashboardPage() {
                   <Button
                     type="submit"
                     disabled={createTicketMutation.isLoading}
+                    className="gap-2 rounded-full px-6 transition-transform duration-150 hover:scale-[1.02]"
                   >
                     {createTicketMutation.isLoading ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Criando...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Criando...</span>
                       </>
                     ) : (
                       "Criar Chamado"
@@ -329,14 +339,15 @@ export default function DashboardPage() {
           </Dialog>
         </div>
 
+        {/* Cards de contagem */}
         <div className="grid gap-4 md:grid-cols-3">
           {/* OPEN TICKETS */}
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t("dashboard.open_tickets")}
               </CardTitle>
-              <div className="h-4 w-4 text-muted-foreground">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
                 <div className="h-2 w-2 rounded-full bg-blue-500" />
               </div>
             </CardHeader>
@@ -347,12 +358,12 @@ export default function DashboardPage() {
           </Card>
 
           {/* PENDING */}
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t("dashboard.pending")}
               </CardTitle>
-              <div className="h-4 w-4 text-muted-foreground">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
                 <div className="h-2 w-2 rounded-full bg-amber-500" />
               </div>
             </CardHeader>
@@ -363,12 +374,12 @@ export default function DashboardPage() {
           </Card>
 
           {/* RESOLVED */}
-          <Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t("status.resolved")}
               </CardTitle>
-              <div className="h-4 w-4 text-muted-foreground">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
               </div>
             </CardHeader>
@@ -379,25 +390,40 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="shadow-sm">
+        {/* Últimos tickets */}
+        <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
           <CardHeader className="border-b bg-muted/40 px-6 py-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Últimos chamados
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Visualize os últimos tickets criados na sua conta.
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder={t("search.placeholder")}
-                    className="w-[250px] bg-background pl-9"
+                    className="w-[250px] rounded-full bg-background/80 pl-9 text-sm shadow-none transition-colors focus-visible:bg-background"
                   />
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="rounded-full border-dashed transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5"
+                    >
                       <Filter className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">
-                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      Filter by Status
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuCheckboxItem checked>
                       {t("status.open")}
@@ -419,18 +445,26 @@ export default function DashboardPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[100px]">
+                <TableRow className="bg-muted/50 hover:bg-muted/60">
+                  <TableHead className="w-[100px] text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.id")}
                   </TableHead>
-                  <TableHead className="min-w-[300px]">
+                  <TableHead className="min-w-[300px] text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.subject")}
                   </TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
-                  <TableHead>{t("table.priority")}</TableHead>
-                  <TableHead>{t("table.requester")}</TableHead>
-                  <TableHead>{t("table.assignee")}</TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.status")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.priority")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.requester")}
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("table.assignee")}
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">
                     {t("table.created")}
                   </TableHead>
                 </TableRow>
@@ -441,7 +475,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="text-center py-8"
+                      className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Loading...
                     </TableCell>
@@ -457,12 +491,12 @@ export default function DashboardPage() {
                     return (
                       <TableRow
                         key={ticket.id}
-                        className="group cursor-pointer hover:bg-muted/30"
+                        className="group cursor-pointer border-b last:border-b-0 transition-colors hover:bg-muted/30"
                       >
                         <TableCell className="font-medium">
                           <Link
                             href={`/ticket/${ticket.id}`}
-                            className="block w-full text-primary hover:underline"
+                            className="block w-full text-sm font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
                           >
                             {displayId}
                           </Link>
@@ -473,10 +507,10 @@ export default function DashboardPage() {
                             href={`/ticket/${ticket.id}`}
                             className="block w-full"
                           >
-                            <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                            <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
                               {ticket.subject}
                             </div>
-                            <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                               {ticket.description}
                             </div>
                           </Link>
@@ -485,7 +519,7 @@ export default function DashboardPage() {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={`border font-normal capitalize shadow-sm ${
+                            className={`border font-normal capitalize shadow-sm transition-colors ${
                               STATUS_COLORS[
                                 ticket.status as keyof typeof STATUS_COLORS
                               ]
@@ -496,7 +530,7 @@ export default function DashboardPage() {
                         </TableCell>
 
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 text-sm">
                             <div
                               className={`h-2 w-2 rounded-full ${
                                 PRIORITY_COLORS[
@@ -504,7 +538,7 @@ export default function DashboardPage() {
                                 ].replace("text-", "bg-")
                               }`}
                             />
-                            <span className="capitalize text-sm">
+                            <span className="capitalize">
                               {t(`priority.${ticket.priority}`)}
                             </span>
                           </div>
@@ -512,7 +546,7 @@ export default function DashboardPage() {
 
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
+                            <Avatar className="h-6 w-6 border">
                               <AvatarImage
                                 src={ticket.requester?.avatar_url || ""}
                               />
@@ -530,7 +564,7 @@ export default function DashboardPage() {
                         <TableCell>
                           {ticket.assignee ? (
                             <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
+                              <Avatar className="h-6 w-6 border">
                                 <AvatarImage
                                   src={ticket.assignee?.avatar_url || ""}
                                 />
@@ -544,13 +578,13 @@ export default function DashboardPage() {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground italic">
+                            <span className="text-xs italic text-muted-foreground">
                               Unassigned
                             </span>
                           )}
                         </TableCell>
 
-                        <TableCell className="text-right text-muted-foreground text-sm">
+                        <TableCell className="text-right text-sm text-muted-foreground">
                           {formatDistanceToNow(
                             new Date(ticket.created_at),
                             {
@@ -566,7 +600,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="text-center py-10 text-muted-foreground"
+                      className="py-10 text-center text-sm text-muted-foreground"
                     >
                       No tickets found.
                     </TableCell>
