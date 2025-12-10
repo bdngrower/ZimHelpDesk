@@ -372,7 +372,7 @@ export default function SettingsPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
             {t("settings.title")}
@@ -383,18 +383,35 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[520px]">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="general">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[520px] bg-muted/40 p-1 rounded-xl shadow-sm">
+            <TabsTrigger
+              value="profile"
+              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+            >
+              Perfil
+            </TabsTrigger>
+            <TabsTrigger
+              value="general"
+              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+            >
               {t("settings.general")}
             </TabsTrigger>
-            <TabsTrigger value="email">
+            <TabsTrigger
+              value="email"
+              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+            >
               {t("settings.email")}
             </TabsTrigger>
-            <TabsTrigger value="spam">
+            <TabsTrigger
+              value="spam"
+              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+            >
               {t("settings.spam")}
             </TabsTrigger>
-            <TabsTrigger value="team">
+            <TabsTrigger
+              value="team"
+              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+            >
               {t("settings.team")}
             </TabsTrigger>
           </TabsList>
@@ -402,7 +419,7 @@ export default function SettingsPage() {
           <div className="mt-6">
             {/* --------- Aba Perfil --------- */}
             <TabsContent value="profile" className="space-y-6">
-              <Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                 <CardHeader>
                   <CardTitle>Perfil</CardTitle>
                   <CardDescription>
@@ -428,7 +445,7 @@ export default function SettingsPage() {
                       onSubmit={handleSaveProfile}
                     >
                       <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16 border">
+                        <Avatar className="h-16 w-16 border shadow-sm">
                           <AvatarImage
                             src={avatarUrlInput || profile.avatar_url || ""}
                           />
@@ -439,8 +456,8 @@ export default function SettingsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-sm text-muted-foreground">
-                          Use uma URL de imagem ou deixe em branco
-                          para usar a inicial do nome.
+                          Use uma URL de imagem ou deixe em branco para
+                          usar a inicial do nome.
                         </div>
                       </div>
 
@@ -457,6 +474,7 @@ export default function SettingsPage() {
                             }
                             placeholder="Seu nome"
                             required
+                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -467,10 +485,11 @@ export default function SettingsPage() {
                             id="profile-email"
                             value={profile.email || user?.email || ""}
                             disabled
+                            className="bg-muted/30"
                           />
                           <p className="text-xs text-muted-foreground">
-                            O e-mail de login é gerenciado pelo
-                            Supabase Auth.
+                            O e-mail de login é gerenciado pelo Supabase
+                            Auth.
                           </p>
                         </div>
                       </div>
@@ -486,6 +505,7 @@ export default function SettingsPage() {
                             setAvatarUrlInput(e.target.value)
                           }
                           placeholder="https://exemplo.com/minha-foto.jpg"
+                          className="bg-muted/30 focus-visible:bg-background"
                         />
                       </div>
 
@@ -493,6 +513,7 @@ export default function SettingsPage() {
                         <Button
                           type="submit"
                           disabled={updateProfileMutation.isLoading}
+                          className="rounded-full px-6"
                         >
                           {updateProfileMutation.isLoading
                             ? "Salvando..."
@@ -507,7 +528,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Geral --------- */}
             <TabsContent value="general" className="space-y-6">
-              <Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                 <CardHeader>
                   <CardTitle>{t("settings.general")}</CardTitle>
                   <CardDescription>
@@ -522,6 +543,7 @@ export default function SettingsPage() {
                     <Input
                       id="desk-name"
                       defaultValue="HelpDesk Pro Support"
+                      className="bg-muted/30 focus-visible:bg-background"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -531,15 +553,18 @@ export default function SettingsPage() {
                     <Input
                       id="support-email"
                       defaultValue="support@company.com"
+                      className="bg-muted/30 focus-visible:bg-background"
                     />
                     <p className="text-xs text-muted-foreground">
-                      This is the email address displayed to
-                      customers.
+                      This is the email address displayed to customers.
                     </p>
                   </div>
                 </CardContent>
                 <CardFooter className="border-t bg-muted/20 px-6 py-4">
-                  <Button onClick={handleSaveSettings}>
+                  <Button
+                    onClick={handleSaveSettings}
+                    className="rounded-full px-6"
+                  >
                     {t("settings.save")}
                   </Button>
                 </CardFooter>
@@ -548,7 +573,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Email --------- */}
             <TabsContent value="email" className="space-y-6">
-              <div className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <Mail className="h-5 w-5 text-primary" />
@@ -579,7 +604,7 @@ export default function SettingsPage() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Incoming Mail (IMAP) */}
-                <Card>
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4 text-primary" />
@@ -598,6 +623,7 @@ export default function SettingsPage() {
                         id="imap-host"
                         placeholder="imap.gmail.com"
                         defaultValue="imap.gmail.com"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -607,6 +633,7 @@ export default function SettingsPage() {
                           id="imap-port"
                           placeholder="993"
                           defaultValue="993"
+                          className="bg-muted/30 focus-visible:bg-background"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -617,6 +644,7 @@ export default function SettingsPage() {
                           id="imap-encryption"
                           defaultValue="SSL/TLS"
                           disabled
+                          className="bg-muted/30"
                         />
                       </div>
                     </div>
@@ -627,6 +655,7 @@ export default function SettingsPage() {
                       <Input
                         id="imap-user"
                         defaultValue="support@company.com"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -637,13 +666,14 @@ export default function SettingsPage() {
                         id="imap-password"
                         type="password"
                         defaultValue="••••••••••••"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Outgoing Mail (SMTP) */}
-                <Card>
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4 text-primary" />
@@ -662,6 +692,7 @@ export default function SettingsPage() {
                         id="smtp-host"
                         placeholder="smtp.gmail.com"
                         defaultValue="smtp.gmail.com"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -671,6 +702,7 @@ export default function SettingsPage() {
                           id="smtp-port"
                           placeholder="587"
                           defaultValue="587"
+                          className="bg-muted/30 focus-visible:bg-background"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -681,6 +713,7 @@ export default function SettingsPage() {
                           id="smtp-encryption"
                           defaultValue="STARTTLS"
                           disabled
+                          className="bg-muted/30"
                         />
                       </div>
                     </div>
@@ -691,6 +724,7 @@ export default function SettingsPage() {
                       <Input
                         id="smtp-user"
                         defaultValue="support@company.com"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -701,19 +735,21 @@ export default function SettingsPage() {
                         id="smtp-password"
                         type="password"
                         defaultValue="••••••••••••"
+                        className="bg-muted/30 focus-visible:bg-background"
                       />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm">
                 <CardFooter className="flex items-center justify-between border-t bg-muted/20 px-6 py-4">
                   <div className="flex items-center gap-4">
                     <Button
                       variant="outline"
                       onClick={handleTestConnection}
                       disabled={isTestingConnection}
+                      className="rounded-full px-5"
                     >
                       {isTestingConnection ? "Testing..." : "Test Connection"}
                     </Button>
@@ -729,7 +765,10 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <Button onClick={handleSaveSettings}>
+                  <Button
+                    onClick={handleSaveSettings}
+                    className="rounded-full px-6"
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     {t("settings.save")}
                   </Button>
@@ -739,7 +778,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Spam --------- */}
             <TabsContent value="spam" className="space-y-6">
-              <Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="h-5 w-5 text-primary" />
@@ -772,8 +811,7 @@ export default function SettingsPage() {
                         Blocked Domains
                       </Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Emails from these domains will never create
-                        tickets.
+                        Emails from these domains will never create tickets.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {[
@@ -794,9 +832,12 @@ export default function SettingsPage() {
                       <div className="flex gap-2">
                         <Input
                           placeholder="Add domain (e.g., newsletter.com)"
-                          className="max-w-md"
+                          className="max-w-md bg-muted/30 focus-visible:bg-background"
                         />
-                        <Button variant="secondary">
+                        <Button
+                          variant="secondary"
+                          className="rounded-full"
+                        >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
@@ -809,8 +850,8 @@ export default function SettingsPage() {
                         Subject Line Keywords
                       </Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Block emails containing these words in the
-                        subject line.
+                        Block emails containing these words in the subject
+                        line.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {[
@@ -833,9 +874,12 @@ export default function SettingsPage() {
                       <div className="flex gap-2">
                         <Input
                           placeholder="Add keyword (e.g., black friday)"
-                          className="max-w-md"
+                          className="max-w-md bg-muted/30 focus-visible:bg-background"
                         />
-                        <Button variant="secondary">
+                        <Button
+                          variant="secondary"
+                          className="rounded-full"
+                        >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
@@ -843,7 +887,10 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="border-t bg-muted/20 px-6 py-4">
-                  <Button onClick={handleSaveSettings}>
+                  <Button
+                    onClick={handleSaveSettings}
+                    className="rounded-full px-6"
+                  >
                     {t("settings.save")}
                   </Button>
                 </CardFooter>
@@ -852,7 +899,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Equipe --------- */}
             <TabsContent value="team" className="space-y-6">
-              <Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="space-y-1">
                     <CardTitle>{t("settings.team")}</CardTitle>
@@ -865,18 +912,18 @@ export default function SettingsPage() {
                     onOpenChange={setIsAddAgentOpen}
                   >
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="rounded-full px-4">
                         <UserPlus className="mr-2 h-4 w-4" />
                         Add Agent
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[420px]">
+                    <DialogContent className="sm:max-w-[420px] border border-border/70 bg-card/90 shadow-lg backdrop-blur-sm">
                       <DialogHeader>
                         <DialogTitle>Add Agent</DialogTitle>
                         <DialogDescription>
                           Cria apenas o registro em{" "}
-                          <code>profiles</code>. Para login, crie o
-                          usuário também no Supabase Auth.
+                          <code>profiles</code>. Para login, crie o usuário
+                          também no Supabase Auth.
                         </DialogDescription>
                       </DialogHeader>
                       <form
@@ -893,6 +940,7 @@ export default function SettingsPage() {
                             }
                             placeholder="Nome do agente"
                             required
+                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -906,6 +954,7 @@ export default function SettingsPage() {
                             }
                             placeholder="agente@empresa.com"
                             required
+                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -933,6 +982,7 @@ export default function SettingsPage() {
                           <Button
                             type="submit"
                             disabled={addAgentMutation.isLoading}
+                            className="rounded-full px-6"
                           >
                             {addAgentMutation.isLoading
                               ? "Salvando..."
@@ -946,7 +996,7 @@ export default function SettingsPage() {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-muted/40 hover:bg-muted/50">
                         <TableHead>Agent</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
@@ -997,10 +1047,13 @@ export default function SettingsPage() {
                       {!isLoadingTeam &&
                         !teamError &&
                         teamMembers.map((member) => (
-                          <TableRow key={member.id}>
+                          <TableRow
+                            key={member.id}
+                            className="hover:bg-muted/40 transition-colors"
+                          >
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
+                                <Avatar className="h-8 w-8 border shadow-sm">
                                   <AvatarImage
                                     src={member.avatar_url || ""}
                                   />
@@ -1036,6 +1089,7 @@ export default function SettingsPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    className="hover:bg-muted rounded-full"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
@@ -1085,7 +1139,7 @@ export default function SettingsPage() {
                   !open && setEditingMember(null)
                 }
               >
-                <DialogContent className="sm:max-w-[380px]">
+                <DialogContent className="sm:max-w-[380px] border border-border/70 bg-card/90 shadow-lg backdrop-blur-sm">
                   <DialogHeader>
                     <DialogTitle>Edit Permissions</DialogTitle>
                     <DialogDescription>
@@ -1138,6 +1192,7 @@ export default function SettingsPage() {
                         <Button
                           type="submit"
                           disabled={updateRoleMutation.isLoading}
+                          className="rounded-full px-6"
                         >
                           {updateRoleMutation.isLoading
                             ? "Salvando..."
