@@ -93,7 +93,7 @@ export default function Layout({ children }: LayoutProps) {
       <Link href={href}>
         <Button
           variant={isActive ? "secondary" : "ghost"}
-          className={`w-full justify-start gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-150
+          className={`group w-full justify-start gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-150
             ${
               isActive
                 ? "bg-primary/10 text-primary font-semibold shadow-sm ring-1 ring-primary/20"
@@ -102,7 +102,9 @@ export default function Layout({ children }: LayoutProps) {
         >
           <span
             className={`h-5 w-1 rounded-full transition-colors ${
-              isActive ? "bg-primary" : "bg-transparent group-hover:bg-muted"
+              isActive
+                ? "bg-primary"
+                : "bg-transparent group-hover:bg-muted-foreground/40"
             }`}
           />
           <Icon className="h-4 w-4" />
@@ -115,7 +117,7 @@ export default function Layout({ children }: LayoutProps) {
   const SidebarContent = () => (
     <div className="flex h-full flex-col gap-4">
       {/* Logo / Topo */}
-      <div className="flex h-16 items-center border-b bg-gradient-to-r from-primary/10 via-background to-background px-6">
+      <div className="flex h-16 items-center border-b bg-gradient-to-r from-primary/10 via-background to-background dark:from-slate-900 dark:via-slate-950 dark:to-slate-950 px-6">
         <Link
           href="/dashboard"
           className="flex items-center gap-2 font-display text-xl font-bold tracking-tight"
@@ -190,10 +192,10 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = async () => {
-  await signOut();
-  // volta sempre para a raiz do domínio atual
-  window.location.href = window.location.origin;
-};
+    await signOut();
+    // volta sempre para a raiz do domínio atual
+    window.location.href = window.location.origin;
+  };
 
   const goToProfile = () => {
     setLocation("/settings#profile");
@@ -204,16 +206,16 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 md:grid md:grid-cols-[240px_1fr]">
+    <div className="min-h-screen bg-muted/30 dark:bg-slate-950 md:grid md:grid-cols-[240px_1fr]">
       {/* Sidebar Desktop */}
-      <aside className="hidden border-r bg-background/95 backdrop-blur-sm md:block">
+      <aside className="hidden border-r bg-background/95 dark:bg-slate-900/90 backdrop-blur-sm md:block">
         <SidebarContent />
       </aside>
 
       {/* Conteúdo Principal */}
       <div className="flex h-screen flex-col overflow-hidden">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 flex-none items-center gap-4 border-b bg-background/80 px-4 md:px-6 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex h-16 flex-none items-center gap-4 border-b bg-background/80 dark:bg-slate-900/80 px-4 md:px-6 backdrop-blur-md">
           {/* Menu Mobile */}
           <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
             <SheetTrigger asChild>
@@ -225,7 +227,10 @@ export default function Layout({ children }: LayoutProps) {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[240px] p-0">
+            <SheetContent
+              side="left"
+              className="w-[240px] p-0 bg-background dark:bg-slate-950"
+            >
               <SidebarContent />
             </SheetContent>
           </Sheet>
@@ -237,7 +242,7 @@ export default function Layout({ children }: LayoutProps) {
               <Input
                 type="search"
                 placeholder={t("search.placeholder")}
-                className="w-full rounded-2xl bg-muted/60 pl-9 text-sm shadow-none transition-colors focus-visible:bg-background"
+                className="w-full rounded-2xl bg-muted/60 pl-9 text-sm shadow-none transition-colors focus-visible:bg-background dark:bg-slate-800/70 dark:focus-visible:bg-slate-900"
               />
             </div>
           </div>
@@ -329,7 +334,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Conteúdo da página */}
-        <main className="flex-1 overflow-auto bg-gradient-to-b from-background to-muted/40 p-4 md:p-6">
+        <main className="flex-1 overflow-auto bg-gradient-to-b from-background to-muted/40 dark:from-slate-950 dark:to-slate-900 p-4 md:p-6">
           {children}
         </main>
       </div>
