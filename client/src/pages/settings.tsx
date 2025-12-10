@@ -350,12 +350,27 @@ export default function SettingsPage() {
       email: string;
       role: "agent" | "admin";
     }) => {
-      const { error } = await supabase.from("profiles").insert({
+      // 1️⃣ cria usuário no Auth e envia invite / magic link
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/login`
+          : undefined;
+
+      const { error: authError } = await supabase.auth.admin.inviteUserByEmail(
+        payload.email,
+        redirectTo ? { redirectTo } : undefined,
+      );
+
+      if (authError) throw authError;
+
+      // 2️⃣ cria o registro em profiles
+      const { error: profileError } = await supabase.from("profiles").insert({
         full_name: payload.full_name,
         email: payload.email,
         role: payload.role,
       });
-      if (error) throw error;
+
+      if (profileError) throw profileError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team_members"] });
@@ -364,9 +379,9 @@ export default function SettingsPage() {
       setAgentRole("agent");
       setIsAddAgentOpen(false);
       toast({
-        title: "Agente criado",
+        title: "Agente convidado",
         description:
-          "O agente foi adicionado à equipe. Crie o usuário de login no Supabase Auth se necessário.",
+          "O agente foi adicionado e recebeu um e-mail com link para acessar o sistema.",
       });
     },
     onError: (err: any) => {
@@ -1163,9 +1178,7 @@ export default function SettingsPage() {
                       <DialogHeader>
                         <DialogTitle>Add Agent</DialogTitle>
                         <DialogDescription>
-                          Cria apenas o registro em{" "}
-                          <code>profiles</code>. Para login, crie o
-                          usuário também no Supabase Auth.
+                          O agente receberá um convite por e-mail para acessar o sistema.
                         </DialogDescription>
                       </DialogHeader>
                       <form
