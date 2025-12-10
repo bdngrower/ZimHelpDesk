@@ -78,6 +78,24 @@ type TeamMember = {
   avatar_url: string | null;
 };
 
+type EmailSettings = {
+  id?: string;
+  from_email: string | null;
+  from_name: string | null;
+  imap_host: string | null;
+  imap_port: number | null;
+  imap_user: string | null;
+  imap_password: string | null;
+  imap_use_ssl: boolean | null;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_user: string | null;
+  smtp_password: string | null;
+  smtp_use_starttls: boolean | null;
+  blocked_domains: string[] | null;
+  subject_keywords: string[] | null;
+};
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -89,7 +107,7 @@ export default function SettingsPage() {
     "idle" | "success" | "error"
   >("idle");
 
-  // ---- PERFIL (aba Profile) ----
+  // -------- PERFIL --------
   const {
     data: profile,
     isLoading: isLoadingProfile,
@@ -170,7 +188,7 @@ export default function SettingsPage() {
     });
   };
 
-  // ---- TEAM MEMBERS (aba Equipe) ----
+  // -------- TEAM MEMBERS --------
   const {
     data: teamMembers = [],
     isLoading: isLoadingTeam,
@@ -188,7 +206,134 @@ export default function SettingsPage() {
     },
   });
 
-  // Estado para Add Agent
+  // -------- EMAIL SETTINGS (IMAP/SMTP + filtros) --------
+  const {
+    data: emailSettings,
+    isLoading: isLoadingEmailSettings,
+  } = useQuery<EmailSettings | null>({
+    queryKey: ["email_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_settings")
+        .select("*")
+        .limit(1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+      return data[0] as EmailSettings;
+    },
+  });
+
+  // Estados locais para os campos de e-mail
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+
+  const [imapHost, setImapHost] = useState("");
+  const [imapPort, setImapPort] = useState("993");
+  const [imapUser, setImapUser] = useState("");
+  const [imapPassword, setImapPassword] = useState("");
+  const [imapUseSSL, setImapUseSSL] = useState(true);
+
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpUseStartTLS, setSmtpUseStartTLS] = useState(true);
+
+  const [blockedDomains, setBlockedDomains] = useState<string[]>([]);
+  const [subjectKeywords, setSubjectKeywords] = useState<string[]>([]);
+  const [newBlockedDomain, setNewBlockedDomain] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
+
+  // Quando carregar as configurações do banco, popular o estado
+  useEffect(() => {
+    if (emailSettings) {
+      setFromEmail(emailSettings.from_email ?? "");
+      setFromName(emailSettings.from_name ?? "");
+
+      setImapHost(emailSettings.imap_host ?? "");
+      setImapPort(
+        emailSettings.imap_port ? String(emailSettings.imap_port) : "993",
+      );
+      setImapUser(emailSettings.imap_user ?? "");
+      setImapPassword(emailSettings.imap_password ?? "");
+      setImapUseSSL(emailSettings.imap_use_ssl ?? true);
+
+      setSmtpHost(emailSettings.smtp_host ?? "");
+      setSmtpPort(
+        emailSettings.smtp_port ? String(emailSettings.smtp_port) : "587",
+      );
+      setSmtpUser(emailSettings.smtp_user ?? "");
+      setSmtpPassword(emailSettings.smtp_password ?? "");
+      setSmtpUseStartTLS(emailSettings.smtp_use_starttls ?? true);
+
+      setBlockedDomains(emailSettings.blocked_domains ?? []);
+      setSubjectKeywords(emailSettings.subject_keywords ?? []);
+    }
+  }, [emailSettings]);
+
+  // Mutation para salvar email_settings (IMAP/SMTP + filtros)
+  const saveEmailSettingsMutation = useMutation({
+    mutationFn: async () => {
+      const payload: Partial<EmailSettings> = {
+        from_email: fromEmail || null,
+        from_name: fromName || null,
+        imap_host: imapHost || null,
+        imap_port: imapPort ? Number(imapPort) : null,
+        imap_user: imapUser || null,
+        imap_password: imapPassword || null,
+        imap_use_ssl: imapUseSSL,
+        smtp_host: smtpHost || null,
+        smtp_port: smtpPort ? Number(smtpPort) : null,
+        smtp_user: smtpUser || null,
+        smtp_password: smtpPassword || null,
+        smtp_use_starttls: smtpUseStartTLS,
+        blocked_domains: blockedDomains,
+        subject_keywords: subjectKeywords,
+      };
+
+      if (emailSettings?.id) {
+        const { error } = await supabase
+          .from("email_settings")
+          .update(payload)
+          .eq("id", emailSettings.id);
+
+        if (error) throw error;
+        return { ...payload, id: emailSettings.id } as EmailSettings;
+      } else {
+        const { data, error } = await supabase
+          .from("email_settings")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (error) throw error;
+        return data as EmailSettings;
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["email_settings"], data);
+      toast({
+        title: "Configurações de e-mail salvas",
+        description:
+          "IMAP/SMTP e filtros de spam foram atualizados com sucesso.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Erro ao salvar configurações",
+        description: err?.message ?? "Não foi possível salvar as configurações.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Botão SAVE das abas Email + Spam
+  const handleSaveEmailAndSpam = () => {
+    saveEmailSettingsMutation.mutate();
+  };
+
+  // ---- TEAM: Adicionar agente ----
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [agentName, setAgentName] = useState("");
   const [agentEmail, setAgentEmail] = useState("");
@@ -216,7 +361,7 @@ export default function SettingsPage() {
       toast({
         title: "Agente criado",
         description:
-          "O agente foi adicionado à equipe. Crie o usuário de login no Supabase se necessário.",
+          "O agente foi adicionado à equipe. Crie o usuário de login no Supabase Auth se necessário.",
       });
     },
     onError: (err: any) => {
@@ -245,7 +390,7 @@ export default function SettingsPage() {
     });
   };
 
-  // Editar permissões (role)
+  // Editar permissões
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editRole, setEditRole] = useState<"agent" | "admin">("agent");
 
@@ -277,7 +422,7 @@ export default function SettingsPage() {
     },
   });
 
-  // Reset password (envia e-mail de reset)
+  // Reset password
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
       const redirectTo =
@@ -319,7 +464,7 @@ export default function SettingsPage() {
     resetPasswordMutation.mutate(member.email);
   };
 
-  // Remover agente (remove da tabela profiles)
+  // Remover agente
   const removeAgentMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -348,14 +493,15 @@ export default function SettingsPage() {
     removeAgentMutation.mutate(member.id);
   };
 
-  // Email settings stub
-  const handleSaveSettings = () => {
+  // General tab (continua mock por enquanto)
+  const handleSaveGeneral = () => {
     toast({
       title: "Settings Saved",
-      description: "Your configuration has been updated successfully.",
+      description: "Your general configuration has been updated.",
     });
   };
 
+  // Email connection "teste" ainda é simulado
   const handleTestConnection = () => {
     setIsTestingConnection(true);
     setConnectionStatus("idle");
@@ -365,14 +511,41 @@ export default function SettingsPage() {
       setConnectionStatus("success");
       toast({
         title: "Connection Successful",
-        description: "Successfully connected to IMAP and SMTP servers.",
+        description: "Successfully connected to IMAP and SMTP servers (simulado).",
       });
     }, 2000);
   };
 
+  // Helpers para filtros
+  const removeBlockedDomain = (domain: string) => {
+    setBlockedDomains((prev) => prev.filter((d) => d !== domain));
+  };
+
+  const addBlockedDomain = () => {
+    const v = newBlockedDomain.trim();
+    if (!v) return;
+    if (!blockedDomains.includes(v)) {
+      setBlockedDomains((prev) => [...prev, v]);
+    }
+    setNewBlockedDomain("");
+  };
+
+  const removeKeyword = (keyword: string) => {
+    setSubjectKeywords((prev) => prev.filter((k) => k !== keyword));
+  };
+
+  const addKeyword = () => {
+    const v = newKeyword.trim();
+    if (!v) return;
+    if (!subjectKeywords.includes(v)) {
+      setSubjectKeywords((prev) => [...prev, v]);
+    }
+    setNewKeyword("");
+  };
+
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
+      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
             {t("settings.title")}
@@ -383,35 +556,18 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[520px] bg-muted/40 p-1 rounded-xl shadow-sm">
-            <TabsTrigger
-              value="profile"
-              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
-            >
-              Perfil
-            </TabsTrigger>
-            <TabsTrigger
-              value="general"
-              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
-            >
+          <TabsList className="grid w-full grid-cols-5 lg:w-[520px]">
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
+            <TabsTrigger value="general">
               {t("settings.general")}
             </TabsTrigger>
-            <TabsTrigger
-              value="email"
-              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
-            >
+            <TabsTrigger value="email">
               {t("settings.email")}
             </TabsTrigger>
-            <TabsTrigger
-              value="spam"
-              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
-            >
+            <TabsTrigger value="spam">
               {t("settings.spam")}
             </TabsTrigger>
-            <TabsTrigger
-              value="team"
-              className="rounded-lg text-sm text-muted-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
-            >
+            <TabsTrigger value="team">
               {t("settings.team")}
             </TabsTrigger>
           </TabsList>
@@ -419,7 +575,7 @@ export default function SettingsPage() {
           <div className="mt-6">
             {/* --------- Aba Perfil --------- */}
             <TabsContent value="profile" className="space-y-6">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle>Perfil</CardTitle>
                   <CardDescription>
@@ -456,8 +612,8 @@ export default function SettingsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-sm text-muted-foreground">
-                          Use uma URL de imagem ou deixe em branco para
-                          usar a inicial do nome.
+                          Use uma URL de imagem ou deixe em branco
+                          para usar a inicial do nome.
                         </div>
                       </div>
 
@@ -474,7 +630,6 @@ export default function SettingsPage() {
                             }
                             placeholder="Seu nome"
                             required
-                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -485,11 +640,10 @@ export default function SettingsPage() {
                             id="profile-email"
                             value={profile.email || user?.email || ""}
                             disabled
-                            className="bg-muted/30"
                           />
                           <p className="text-xs text-muted-foreground">
-                            O e-mail de login é gerenciado pelo Supabase
-                            Auth.
+                            O e-mail de login é gerenciado pelo
+                            Supabase Auth.
                           </p>
                         </div>
                       </div>
@@ -505,7 +659,6 @@ export default function SettingsPage() {
                             setAvatarUrlInput(e.target.value)
                           }
                           placeholder="https://exemplo.com/minha-foto.jpg"
-                          className="bg-muted/30 focus-visible:bg-background"
                         />
                       </div>
 
@@ -513,7 +666,6 @@ export default function SettingsPage() {
                         <Button
                           type="submit"
                           disabled={updateProfileMutation.isLoading}
-                          className="rounded-full px-6"
                         >
                           {updateProfileMutation.isLoading
                             ? "Salvando..."
@@ -528,7 +680,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Geral --------- */}
             <TabsContent value="general" className="space-y-6">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle>{t("settings.general")}</CardTitle>
                   <CardDescription>
@@ -543,7 +695,6 @@ export default function SettingsPage() {
                     <Input
                       id="desk-name"
                       defaultValue="HelpDesk Pro Support"
-                      className="bg-muted/30 focus-visible:bg-background"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -553,18 +704,15 @@ export default function SettingsPage() {
                     <Input
                       id="support-email"
                       defaultValue="support@company.com"
-                      className="bg-muted/30 focus-visible:bg-background"
                     />
                     <p className="text-xs text-muted-foreground">
-                      This is the email address displayed to customers.
+                      This is the email address displayed to
+                      customers.
                     </p>
                   </div>
                 </CardContent>
                 <CardFooter className="border-t bg-muted/20 px-6 py-4">
-                  <Button
-                    onClick={handleSaveSettings}
-                    className="rounded-full px-6"
-                  >
+                  <Button onClick={handleSaveGeneral}>
                     {t("settings.save")}
                   </Button>
                 </CardFooter>
@@ -573,38 +721,40 @@ export default function SettingsPage() {
 
             {/* --------- Aba Email --------- */}
             <TabsContent value="email" className="space-y-6">
-              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Mail className="h-5 w-5 text-primary" />
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                      <Mail className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">
+                        Email Channel Status
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Monitoring{" "}
+                        <span className="font-medium text-foreground">
+                          {fromEmail || "support@company.com"}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">
-                      Email Channel Status
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Monitoring{" "}
-                      <span className="font-medium text-foreground">
-                        support@company.com
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
                       </span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
+                      Active
                     </span>
-                    Active
-                  </span>
-                  <Switch checked />
-                </div>
-              </div>
+                    <Switch checked />
+                  </div>
+                </CardContent>
+              </Card>
 
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Incoming Mail (IMAP) */}
-                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4 text-primary" />
@@ -618,12 +768,35 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-2">
+                      <Label htmlFor="from-email">
+                        From Email (remetente)
+                      </Label>
+                      <Input
+                        id="from-email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        placeholder="support@company.com"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="from-name">
+                        From Name
+                      </Label>
+                      <Input
+                        id="from-name"
+                        value={fromName}
+                        onChange={(e) => setFromName(e.target.value)}
+                        placeholder="HelpDesk Pro"
+                      />
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="grid gap-2">
                       <Label htmlFor="imap-host">IMAP Host</Label>
                       <Input
                         id="imap-host"
                         placeholder="imap.gmail.com"
-                        defaultValue="imap.gmail.com"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={imapHost}
+                        onChange={(e) => setImapHost(e.target.value)}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -632,20 +805,21 @@ export default function SettingsPage() {
                         <Input
                           id="imap-port"
                           placeholder="993"
-                          defaultValue="993"
-                          className="bg-muted/30 focus-visible:bg-background"
+                          value={imapPort}
+                          onChange={(e) => setImapPort(e.target.value)}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="imap-encryption">
-                          Encryption
-                        </Label>
-                        <Input
-                          id="imap-encryption"
-                          defaultValue="SSL/TLS"
-                          disabled
-                          className="bg-muted/30"
-                        />
+                        <Label>SSL</Label>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={imapUseSSL}
+                            onCheckedChange={setImapUseSSL}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            Use SSL/TLS
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-2">
@@ -654,8 +828,9 @@ export default function SettingsPage() {
                       </Label>
                       <Input
                         id="imap-user"
-                        defaultValue="support@company.com"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={imapUser}
+                        onChange={(e) => setImapUser(e.target.value)}
+                        placeholder="support@company.com"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -665,15 +840,16 @@ export default function SettingsPage() {
                       <Input
                         id="imap-password"
                         type="password"
-                        defaultValue="••••••••••••"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={imapPassword}
+                        onChange={(e) => setImapPassword(e.target.value)}
+                        placeholder="App password"
                       />
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Outgoing Mail (SMTP) */}
-                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4 text-primary" />
@@ -691,8 +867,8 @@ export default function SettingsPage() {
                       <Input
                         id="smtp-host"
                         placeholder="smtp.gmail.com"
-                        defaultValue="smtp.gmail.com"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -701,20 +877,21 @@ export default function SettingsPage() {
                         <Input
                           id="smtp-port"
                           placeholder="587"
-                          defaultValue="587"
-                          className="bg-muted/30 focus-visible:bg-background"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="smtp-encryption">
-                          Encryption
-                        </Label>
-                        <Input
-                          id="smtp-encryption"
-                          defaultValue="STARTTLS"
-                          disabled
-                          className="bg-muted/30"
-                        />
+                        <Label>STARTTLS</Label>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={smtpUseStartTLS}
+                            onCheckedChange={setSmtpUseStartTLS}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            Use STARTTLS
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-2">
@@ -723,8 +900,9 @@ export default function SettingsPage() {
                       </Label>
                       <Input
                         id="smtp-user"
-                        defaultValue="support@company.com"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        placeholder="support@company.com"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -734,8 +912,9 @@ export default function SettingsPage() {
                       <Input
                         id="smtp-password"
                         type="password"
-                        defaultValue="••••••••••••"
-                        className="bg-muted/30 focus-visible:bg-background"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        placeholder="App password"
                       />
                     </div>
                   </CardContent>
@@ -743,13 +922,12 @@ export default function SettingsPage() {
               </div>
 
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm">
-                <CardFooter className="flex items-center justify-between border-t bg-muted/20 px-6 py-4">
+                <CardFooter className="flex items-center justify-between px-6 py-4">
                   <div className="flex items-center gap-4">
                     <Button
                       variant="outline"
                       onClick={handleTestConnection}
                       disabled={isTestingConnection}
-                      className="rounded-full px-5"
                     >
                       {isTestingConnection ? "Testing..." : "Test Connection"}
                     </Button>
@@ -766,11 +944,13 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <Button
-                    onClick={handleSaveSettings}
-                    className="rounded-full px-6"
+                    onClick={handleSaveEmailAndSpam}
+                    disabled={saveEmailSettingsMutation.isLoading}
                   >
                     <Save className="mr-2 h-4 w-4" />
-                    {t("settings.save")}
+                    {saveEmailSettingsMutation.isLoading
+                      ? "Salvando..."
+                      : t("settings.save")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -778,7 +958,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Spam --------- */}
             <TabsContent value="spam" className="space-y-6">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="h-5 w-5 text-primary" />
@@ -811,32 +991,48 @@ export default function SettingsPage() {
                         Blocked Domains
                       </Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Emails from these domains will never create tickets.
+                        Emails from these domains will never create
+                        tickets.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {[
-                          "news.marketing.com",
-                          "promo.store.com",
-                          "no-reply.service.net",
-                        ].map((domain) => (
+                        {blockedDomains.map((domain) => (
                           <Badge
                             key={domain}
                             variant="secondary"
                             className="px-3 py-1 text-sm flex items-center gap-2"
                           >
                             {domain}
-                            <Trash2 className="h-3 w-3 cursor-pointer hover:text-destructive" />
+                            <Trash2
+                              className="h-3 w-3 cursor-pointer hover:text-destructive"
+                              onClick={() => removeBlockedDomain(domain)}
+                            />
                           </Badge>
                         ))}
+                        {blockedDomains.length === 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Nenhum domínio bloqueado ainda.
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Input
                           placeholder="Add domain (e.g., newsletter.com)"
-                          className="max-w-md bg-muted/30 focus-visible:bg-background"
+                          className="max-w-md"
+                          value={newBlockedDomain}
+                          onChange={(e) =>
+                            setNewBlockedDomain(e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addBlockedDomain();
+                            }
+                          }}
                         />
                         <Button
                           variant="secondary"
-                          className="rounded-full"
+                          type="button"
+                          onClick={addBlockedDomain}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -850,35 +1046,48 @@ export default function SettingsPage() {
                         Subject Line Keywords
                       </Label>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Block emails containing these words in the subject
-                        line.
+                        Block emails containing these words in the
+                        subject line.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {[
-                          "newsletter",
-                          "promotion",
-                          "discount",
-                          "offer",
-                          "sale",
-                        ].map((keyword) => (
+                        {subjectKeywords.map((keyword) => (
                           <Badge
                             key={keyword}
                             variant="outline"
                             className="px-3 py-1 text-sm flex items-center gap-2 border-dashed"
                           >
                             {keyword}
-                            <Trash2 className="h-3 w-3 cursor-pointer hover:text-destructive" />
+                            <Trash2
+                              className="h-3 w-3 cursor-pointer hover:text-destructive"
+                              onClick={() => removeKeyword(keyword)}
+                            />
                           </Badge>
                         ))}
+                        {subjectKeywords.length === 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Nenhuma palavra-chave bloqueada ainda.
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Input
                           placeholder="Add keyword (e.g., black friday)"
-                          className="max-w-md bg-muted/30 focus-visible:bg-background"
+                          className="max-w-md"
+                          value={newKeyword}
+                          onChange={(e) =>
+                            setNewKeyword(e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addKeyword();
+                            }
+                          }}
                         />
                         <Button
                           variant="secondary"
-                          className="rounded-full"
+                          type="button"
+                          onClick={addKeyword}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -886,12 +1095,14 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="border-t bg-muted/20 px-6 py-4">
+                <CardFooter className="border-t bg-muted/20 px-6 py-4 flex justify-end">
                   <Button
-                    onClick={handleSaveSettings}
-                    className="rounded-full px-6"
+                    onClick={handleSaveEmailAndSpam}
+                    disabled={saveEmailSettingsMutation.isLoading}
                   >
-                    {t("settings.save")}
+                    {saveEmailSettingsMutation.isLoading
+                      ? "Salvando..."
+                      : t("settings.save")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -899,7 +1110,7 @@ export default function SettingsPage() {
 
             {/* --------- Aba Equipe --------- */}
             <TabsContent value="team" className="space-y-6">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="space-y-1">
                     <CardTitle>{t("settings.team")}</CardTitle>
@@ -912,18 +1123,18 @@ export default function SettingsPage() {
                     onOpenChange={setIsAddAgentOpen}
                   >
                     <DialogTrigger asChild>
-                      <Button className="rounded-full px-4">
+                      <Button>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Add Agent
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[420px] border border-border/70 bg-card/90 shadow-lg backdrop-blur-sm">
+                    <DialogContent className="sm:max-w-[420px]">
                       <DialogHeader>
                         <DialogTitle>Add Agent</DialogTitle>
                         <DialogDescription>
                           Cria apenas o registro em{" "}
-                          <code>profiles</code>. Para login, crie o usuário
-                          também no Supabase Auth.
+                          <code>profiles</code>. Para login, crie o
+                          usuário também no Supabase Auth.
                         </DialogDescription>
                       </DialogHeader>
                       <form
@@ -940,7 +1151,6 @@ export default function SettingsPage() {
                             }
                             placeholder="Nome do agente"
                             required
-                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -954,7 +1164,6 @@ export default function SettingsPage() {
                             }
                             placeholder="agente@empresa.com"
                             required
-                            className="bg-muted/30 focus-visible:bg-background"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -982,7 +1191,6 @@ export default function SettingsPage() {
                           <Button
                             type="submit"
                             disabled={addAgentMutation.isLoading}
-                            className="rounded-full px-6"
                           >
                             {addAgentMutation.isLoading
                               ? "Salvando..."
@@ -996,7 +1204,7 @@ export default function SettingsPage() {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/40 hover:bg-muted/50">
+                      <TableRow>
                         <TableHead>Agent</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
@@ -1047,13 +1255,10 @@ export default function SettingsPage() {
                       {!isLoadingTeam &&
                         !teamError &&
                         teamMembers.map((member) => (
-                          <TableRow
-                            key={member.id}
-                            className="hover:bg-muted/40 transition-colors"
-                          >
+                          <TableRow key={member.id}>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8 border shadow-sm">
+                                <Avatar className="h-8 w-8 border">
                                   <AvatarImage
                                     src={member.avatar_url || ""}
                                   />
@@ -1089,7 +1294,6 @@ export default function SettingsPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="hover:bg-muted rounded-full"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
@@ -1139,7 +1343,7 @@ export default function SettingsPage() {
                   !open && setEditingMember(null)
                 }
               >
-                <DialogContent className="sm:max-w-[380px] border border-border/70 bg-card/90 shadow-lg backdrop-blur-sm">
+                <DialogContent className="sm:max-w-[380px]">
                   <DialogHeader>
                     <DialogTitle>Edit Permissions</DialogTitle>
                     <DialogDescription>
@@ -1192,7 +1396,6 @@ export default function SettingsPage() {
                         <Button
                           type="submit"
                           disabled={updateRoleMutation.isLoading}
-                          className="rounded-full px-6"
                         >
                           {updateRoleMutation.isLoading
                             ? "Salvando..."
