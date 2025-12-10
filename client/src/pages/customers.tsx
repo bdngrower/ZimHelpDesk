@@ -213,8 +213,9 @@ export default function CustomersPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               {t("customers.title")}
             </h1>
@@ -225,14 +226,16 @@ export default function CustomersPage() {
           <div className="flex items-center gap-2">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="transition-transform duration-150 hover:scale-[1.02]">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Customer
+                <Button className="gap-2 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
+                  <Plus className="h-4 w-4" />
+                  <span>Add Customer</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[520px]">
                 <DialogHeader>
-                  <DialogTitle>Add Customer</DialogTitle>
+                  <DialogTitle className="text-lg font-semibold">
+                    Add Customer
+                  </DialogTitle>
                   <DialogDescription>
                     Crie um novo cliente no sistema. Isso cria apenas o
                     registro em <code>profiles</code> com role{" "}
@@ -252,6 +255,7 @@ export default function CustomersPage() {
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="Nome do cliente"
                         required
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -263,6 +267,7 @@ export default function CustomersPage() {
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="cliente@empresa.com"
                         required
+                        className="rounded-lg"
                       />
                     </div>
                   </div>
@@ -275,6 +280,7 @@ export default function CustomersPage() {
                         value={newCnpj}
                         onChange={(e) => setNewCnpj(e.target.value)}
                         placeholder="00.000.000/0001-00"
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -284,6 +290,7 @@ export default function CustomersPage() {
                         value={newPhone}
                         onChange={(e) => setNewPhone(e.target.value)}
                         placeholder="(11) 99999-0000"
+                        className="rounded-lg"
                       />
                     </div>
                   </div>
@@ -298,6 +305,7 @@ export default function CustomersPage() {
                         value={newAddress}
                         onChange={(e) => setNewAddress(e.target.value)}
                         placeholder="Rua, número, complemento"
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -307,6 +315,7 @@ export default function CustomersPage() {
                         value={newCity}
                         onChange={(e) => setNewCity(e.target.value)}
                         placeholder="São Paulo"
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -316,6 +325,7 @@ export default function CustomersPage() {
                         value={newState}
                         onChange={(e) => setNewState(e.target.value)}
                         placeholder="SP"
+                        className="rounded-lg"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -327,6 +337,7 @@ export default function CustomersPage() {
                           setNewPostalCode(e.target.value)
                         }
                         placeholder="00000-000"
+                        className="rounded-lg"
                       />
                     </div>
                   </div>
@@ -342,6 +353,7 @@ export default function CustomersPage() {
                     <Button
                       type="submit"
                       disabled={createCustomerMutation.isLoading}
+                      className="rounded-full px-6 transition-transform duration-150 hover:scale-[1.02]"
                     >
                       {createCustomerMutation.isLoading
                         ? "Salvando..."
@@ -354,14 +366,15 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        <Card className="shadow-sm transition-shadow duration-150 hover:shadow-md">
+        {/* Lista de clientes */}
+        <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md">
           <CardHeader className="border-b bg-muted/40 px-6 py-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search customers..."
-                  className="w-full bg-background pl-9"
+                  className="w-full rounded-full bg-background/80 pl-9 text-sm shadow-none transition-colors focus-visible:bg-background"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -372,12 +385,24 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/60">
-                  <TableHead className="w-[260px]">Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[260px] text-xs uppercase tracking-wide text-muted-foreground">
+                    Name
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Email
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Phone
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    CNPJ
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Location
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -408,12 +433,12 @@ export default function CustomersPage() {
                   filteredCustomers.map((user) => (
                     <TableRow
                       key={user.id}
-                      className="group cursor-pointer transition-colors hover:bg-muted/40"
+                      className="group cursor-pointer border-b last:border-b-0 transition-colors hover:bg-muted/40"
                       onClick={() => setSelectedCustomer(user)}
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9 border shadow-sm group-hover:shadow-md transition-shadow">
+                          <Avatar className="h-9 w-9 border shadow-sm transition-shadow duration-150 group-hover:shadow-md">
                             <AvatarImage src={user.avatar_url || ""} />
                             <AvatarFallback>
                               {user.full_name
@@ -425,7 +450,7 @@ export default function CustomersPage() {
                             <div className="font-medium text-foreground">
                               {user.full_name || "Unnamed"}
                             </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                               {user.created_at && (
                                 <span>
                                   Cliente desde{" "}
@@ -439,13 +464,13 @@ export default function CustomersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Mail className="h-3.5 w-3.5" />
                           {user.email || "-"}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Phone className="h-3.5 w-3.5" />
                           {user.phone || "-"}
                         </div>
@@ -466,7 +491,7 @@ export default function CustomersPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="hover:bg-muted rounded-full"
+                              className="rounded-full hover:bg-muted"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -576,7 +601,7 @@ export default function CustomersPage() {
                     <MapPin className="h-4 w-4 text-primary" />
                     <span>Endereço</span>
                   </div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  <p className="whitespace-pre-line text-sm text-muted-foreground">
                     {buildAddress(selectedCustomer) || "-"}
                   </p>
 
